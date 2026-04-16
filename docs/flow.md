@@ -150,7 +150,7 @@ $ argos
 사용자:   Jane Dev (jane@example.com)
 프로젝트: my-project (proj_abc123)
 조직:     jane-dev
-API:      https://api.argos.sh
+API:      https://server.argos-ai.xyz
 Hooks:    ✓ .claude/settings.json에 설치됨
 ```
 
@@ -196,28 +196,30 @@ Hooks:    ✓ .claude/settings.json에 설치됨
 **전제**: `argos` 설정 완료, Claude Code 사용 중.
 
 ```
-Claude Code                argos hook (자동 실행)              API
-     │                              │                           │
-     ├─ tool 호출 전 ──────────────▶│                           │
-     │  stdin: PreToolUse JSON      ├─ stdin 파싱               │
-     │                              ├─ ~/.argos/config.json 읽기│
-     │                              ├─ .argos/project.json 읽기 │
-     │                              ├─ POST /api/events ───────▶│
-     │                              │  (3초 타임아웃)            ├─ Event 저장
-     │◀─ exit 0 ────────────────────┤                           │
-     │  (즉시 복귀, Claude Code 계속)│                           │
-     │                              │                           │
-     ├─ tool 호출 완료 ────────────▶│  PostToolUse              │
-     ├─ Stop 이벤트 ───────────────▶│  Stop                     │
-     │  transcript_path 포함        ├─ transcript.jsonl 읽기    │
-     │                              ├─ 토큰 사용량 추출          │
-     │                              ├─ 대화 메시지 추출          │
-     │                              │  (type=human/assistant)   │
-     │                              ├─ POST /api/events ───────▶│
-     │                              │  (usage + messages 포함)  ├─ UsageRecord 저장
-     │                              │                           ├─ Message bulk insert
-     │◀─ exit 0 ────────────────────┤                           │
+Claude Code                argos hook (자동 실행)         [detached 자식 프로세스]     API
+     │                              │                              │                    │
+     ├─ tool 호출 전 ──────────────▶│                              │                    │
+     │  stdin: PreToolUse JSON      ├─ stdin 파싱                  │                    │
+     │                              ├─ ~/.argos/config.json 읽기   │                    │
+     │                              ├─ .argos/project.json 읽기    │                    │
+     │                              ├─ payload → /tmp/argos-*.json │                    │
+     │                              ├─ spawn(node, detached) ─────▶│                    │
+     │◀─ exit 0 ────────────────────┤  child.unref()               ├─ POST /api/events─▶│
+     │  (0ms 지연, Claude Code 계속) │                              │  (10초 타임아웃)   ├─ Event 저장
+     │                              │                              ├─ tmp 파일 삭제      │
+     │                              │                              │                    │
+     ├─ Stop 이벤트 ───────────────▶│  Stop                        │                    │
+     │                              ├─ transcript.jsonl 읽기 (로컬) │                    │
+     │                              ├─ 토큰 사용량 추출             │                    │
+     │                              ├─ 대화 메시지 추출             │                    │
+     │                              ├─ payload → /tmp/argos-*.json │                    │
+     │                              ├─ spawn(node, detached) ─────▶│                    │
+     │◀─ exit 0 ────────────────────┤  child.unref()               ├─ POST /api/events─▶│
+     │  (0ms 지연)                  │                              │  (usage + messages)├─ UsageRecord 저장
+     │                              │                              │                    ├─ Message insert
 ```
+
+**핵심 설계**: `argos hook` 프로세스는 로컬 파일 처리(stdin 파싱, transcript 읽기) 후 **즉시 exit 0**한다. API 전송은 완전히 분리된(detached + unref) 자식 프로세스가 담당하므로 Claude Code에 어떠한 네트워크 지연도 발생하지 않는다.
 
 **Skill 호출 감지**:
 ```
@@ -297,7 +299,7 @@ $ argos
 
 브라우저에서 GitHub 인증을 완료해주세요...
 
-✗ API 서버에 연결할 수 없습니다: https://api.argos.sh
+✗ API 서버에 연결할 수 없습니다: https://server.argos-ai.xyz
   셀프호스팅을 사용 중이라면 --api-url 플래그를 확인하세요.
 ```
 
