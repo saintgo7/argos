@@ -15,6 +15,7 @@
     "dev": "tsc --watch",
     "prepublishOnly": "pnpm build",
     "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },

@@ -147,7 +147,7 @@ function OverviewContent({ projectId }: { projectId: string }) {
             </tr>
           </thead>
           <tbody>
-            {summary?.topSkills.slice(0, 5).map((skill: { skillName: string; callCount: number }) => (
+            {summary?.topSkills.slice(0, 5).map((skill) => (
               <tr key={skill.skillName} className="border-b hover:bg-gray-50">
                 <td className="py-2">{skill.skillName}</td>
                 <td className="text-right py-2">{skill.callCount}</td>
