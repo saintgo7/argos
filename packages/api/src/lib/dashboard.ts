@@ -65,6 +65,9 @@ export function parseDateRange(from?: string, to?: string): DateRange {
     toDate = new Date(to)
     if (isNaN(toDate.getTime())) {
       toDate = now
+    } else {
+      // "2026-04-16" → UTC 00:00:00 이므로 해당 날짜의 끝(23:59:59.999)으로 보정
+      toDate.setUTCHours(23, 59, 59, 999)
     }
   } else {
     toDate = now
