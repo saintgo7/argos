@@ -7,15 +7,20 @@ import { injectHooks } from '../lib/hooks-inject.js'
 const HOOK_EVENTS = ['SessionStart', 'PreToolUse', 'PostToolUse', 'Stop', 'SubagentStop']
 const ARGOS_COMMAND = 'argos hook'
 
-function hasArgosHook(entries: any[]): boolean {
-  return entries.some((entry: any) =>
-    entry.hooks?.some((h: any) => h.command === ARGOS_COMMAND)
+interface HookEntry {
+  matcher: string
+  hooks: { type: string; command: string }[]
+}
+
+function hasArgosHook(entries: HookEntry[]): boolean {
+  return entries.some((entry) =>
+    entry.hooks?.some((h) => h.command === ARGOS_COMMAND)
   )
 }
 
-function argosHookCount(entries: any[]): number {
-  return entries.filter((entry: any) =>
-    entry.hooks?.some((h: any) => h.command === ARGOS_COMMAND)
+function argosHookCount(entries: HookEntry[]): number {
+  return entries.filter((entry) =>
+    entry.hooks?.some((h) => h.command === ARGOS_COMMAND)
   ).length
 }
 
@@ -142,13 +147,14 @@ describe('injectHooks', () => {
     injectHooks(settingsPath)
 
     const settings = JSON.parse(readFileSync(settingsPath, 'utf8'))
-    const stopEntries = settings.hooks.Stop
-    const argosEntry = stopEntries.find((e: any) =>
-      e.hooks?.some((h: any) => h.command === ARGOS_COMMAND)
+    const stopEntries = settings.hooks.Stop as HookEntry[]
+    const argosEntry = stopEntries.find((e) =>
+      e.hooks?.some((h) => h.command === ARGOS_COMMAND)
     )
 
-    expect(argosEntry.matcher).toBe('')
-    expect(argosEntry.hooks[0].type).toBe('command')
-    expect(argosEntry.hooks[0].command).toBe(ARGOS_COMMAND)
+    expect(argosEntry).toBeDefined()
+    expect(argosEntry!.matcher).toBe('')
+    expect(argosEntry!.hooks[0].type).toBe('command')
+    expect(argosEntry!.hooks[0].command).toBe(ARGOS_COMMAND)
   })
 })

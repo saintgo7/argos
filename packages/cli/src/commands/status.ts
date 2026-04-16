@@ -6,7 +6,7 @@ import type { CommandFactory } from '../deps.js'
  * Status command - show current configuration
  */
 export const makeStatusCommand: CommandFactory =
-  (deps) => async (_options) => {
+  (deps) => async () => {
     const config = deps.config.read()
     const project = deps.project.find()
 

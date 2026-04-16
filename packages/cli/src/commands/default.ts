@@ -65,7 +65,7 @@ async function runFullSetup(deps: ExternalDeps, apiUrl: string): Promise<void> {
   const currentDirName = deps.cwd().split('/').pop() || 'my-project'
   const projectName = await deps.prompt.input('프로젝트 이름을 입력하세요:', currentDirName)
 
-  let spinner = ora('프로젝트 생성 중...').start()
+  const spinner = ora('프로젝트 생성 중...').start()
 
   let projectResponse: CreateProjectResponse
   try {

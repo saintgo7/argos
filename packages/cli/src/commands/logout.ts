@@ -6,7 +6,7 @@ import type { CommandFactory } from '../deps.js'
  * Logout command - revoke token and delete local config
  */
 export const makeLogoutCommand: CommandFactory =
-  (deps) => async (_options) => {
+  (deps) => async () => {
     const config = deps.config.read()
 
     if (!config) {

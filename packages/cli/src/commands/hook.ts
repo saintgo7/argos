@@ -2,7 +2,7 @@ import { homedir } from 'os'
 import { appendFileSync, existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import type { IngestEventPayload, EventType } from '@argos/shared'
-import type { ExternalDeps, CommandFactory } from '../deps.js'
+import type { CommandFactory } from '../deps.js'
 
 interface HookStdinPayload {
   hook_event_name?: string
@@ -133,7 +133,7 @@ export function buildPayload(
  * MUST always exit with code 0
  */
 export const makeHookCommand: CommandFactory =
-  (deps) => async (_options) => {
+  (deps) => async () => {
     try {
       // Read stdin with 100ms timeout
       const raw = await readStdinWithTimeout(100)
