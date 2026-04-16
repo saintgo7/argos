@@ -21,9 +21,9 @@ const dashboard = new Hono<{ Variables: Variables }>()
 dashboard.use('*', authMiddleware)
 
 // GET /api/projects/:projectId/dashboard/summary
-dashboard.get('/:projectId/summary', async (c) => {
+dashboard.get('/summary', async (c) => {
   const userId = c.get('userId') as string
-  const projectId = c.req.param('projectId')
+  const projectId = c.req.param('projectId')!
 
   try {
     await assertProjectAccess(projectId, userId)
@@ -114,9 +114,9 @@ dashboard.get('/:projectId/summary', async (c) => {
 })
 
 // GET /api/projects/:projectId/dashboard/usage
-dashboard.get('/:projectId/usage', async (c) => {
+dashboard.get('/usage', async (c) => {
   const userId = c.get('userId') as string
-  const projectId = c.req.param('projectId')
+  const projectId = c.req.param('projectId')!
 
   try {
     await assertProjectAccess(projectId, userId)
@@ -165,9 +165,9 @@ dashboard.get('/:projectId/usage', async (c) => {
 })
 
 // GET /api/projects/:projectId/dashboard/users
-dashboard.get('/:projectId/users', async (c) => {
+dashboard.get('/users', async (c) => {
   const userId = c.get('userId') as string
-  const projectId = c.req.param('projectId')
+  const projectId = c.req.param('projectId')!
 
   try {
     const { orgId } = await assertProjectAccess(projectId, userId)
@@ -231,9 +231,9 @@ dashboard.get('/:projectId/users', async (c) => {
 })
 
 // GET /api/projects/:projectId/dashboard/skills
-dashboard.get('/:projectId/skills', async (c) => {
+dashboard.get('/skills', async (c) => {
   const userId = c.get('userId') as string
-  const projectId = c.req.param('projectId')
+  const projectId = c.req.param('projectId')!
 
   try {
     await assertProjectAccess(projectId, userId)
@@ -282,9 +282,9 @@ dashboard.get('/:projectId/skills', async (c) => {
 })
 
 // GET /api/projects/:projectId/dashboard/agents
-dashboard.get('/:projectId/agents', async (c) => {
+dashboard.get('/agents', async (c) => {
   const userId = c.get('userId') as string
-  const projectId = c.req.param('projectId')
+  const projectId = c.req.param('projectId')!
 
   try {
     await assertProjectAccess(projectId, userId)
@@ -349,9 +349,9 @@ dashboard.get('/:projectId/agents', async (c) => {
 })
 
 // GET /api/projects/:projectId/dashboard/sessions
-dashboard.get('/:projectId/sessions', async (c) => {
+dashboard.get('/sessions', async (c) => {
   const userId = c.get('userId') as string
-  const projectId = c.req.param('projectId')
+  const projectId = c.req.param('projectId')!
 
   try {
     await assertProjectAccess(projectId, userId)
@@ -405,9 +405,9 @@ dashboard.get('/:projectId/sessions', async (c) => {
 })
 
 // GET /api/projects/:projectId/dashboard/sessions/:sessionId
-dashboard.get('/:projectId/sessions/:sessionId', async (c) => {
+dashboard.get('/sessions/:sessionId', async (c) => {
   const userId = c.get('userId') as string
-  const projectId = c.req.param('projectId')
+  const projectId = c.req.param('projectId')!
   const sessionId = c.req.param('sessionId')
 
   try {
