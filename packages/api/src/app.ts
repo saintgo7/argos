@@ -8,21 +8,15 @@ import orgs from '@/routes/orgs'
 import projects from '@/routes/projects'
 import events from '@/routes/events'
 import dashboard from '@/routes/dashboard'
-import { env } from '@/env'
 
 const app = new Hono()
 
-const allowedOrigins = env.WEB_URL.split(',').map((u) => u.trim())
-app.use('*', cors({ origin: allowedOrigins }))
+app.use('*', cors({ origin: '*' }))
 app.use('*', logger())
 app.onError((err, c) => {
   // cors() middleware post-processing doesn't run when a handler throws,
   // so we manually add CORS headers here to prevent browser CORS errors on 5xx.
-  const origin = c.req.header('Origin')
-  if (origin && allowedOrigins.includes(origin)) {
-    c.header('Access-Control-Allow-Origin', origin)
-    c.header('Vary', 'Origin')
-  }
+  c.header('Access-Control-Allow-Origin', '*')
   return errorHandler(err, c)
 })
 
