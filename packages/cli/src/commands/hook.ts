@@ -145,6 +145,13 @@ export const makeHookCommand: CommandFactory =
       // Parse hook event
       const event: HookStdinPayload = JSON.parse(raw)
 
+      // Skip sub-agent events — we only track the user's main session.
+      // Sub-agent events are identified by SubagentStop or by the presence of agent_id.
+      if (event.hook_event_name === 'SubagentStop' || event.agent_id) {
+        process.exit(0)
+        return
+      }
+
       // Find project config
       const project = deps.project.find(process.cwd())
       if (!project) {

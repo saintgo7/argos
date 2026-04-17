@@ -253,7 +253,7 @@ describe('makeHookCommand orchestration', () => {
     expect(deps.transcript.extractMessages).toHaveBeenCalledWith(transcriptPath)
   })
 
-  it('calls extractUsage and extractMessages for SubagentStop event', async () => {
+  it('skips SubagentStop events — sub-agent activity is not tracked', async () => {
     const deps = makeMockDeps()
     const transcriptPath = join(tempDir, 'agent.jsonl')
     writeFileSync(transcriptPath, '', 'utf8')
@@ -269,8 +269,28 @@ describe('makeHookCommand orchestration', () => {
     )
     await makeHookCommand(deps)({})
 
-    expect(deps.transcript.extractUsage).toHaveBeenCalledWith(transcriptPath)
-    expect(deps.transcript.extractMessages).toHaveBeenCalledWith(transcriptPath)
+    expect(deps.transcript.extractUsage).not.toHaveBeenCalled()
+    expect(deps.transcript.extractMessages).not.toHaveBeenCalled()
+    expect(deps.events.sendBackground).not.toHaveBeenCalled()
+    expect(process.exit).toHaveBeenCalledWith(0)
+  })
+
+  it('skips events carrying agent_id — they originate from a sub-agent', async () => {
+    const deps = makeMockDeps()
+    setStdin(
+      makeStdin(
+        JSON.stringify({
+          hook_event_name: 'PreToolUse',
+          session_id: 'x',
+          agent_id: 'agent-123',
+          tool_name: 'Bash',
+        })
+      )
+    )
+    await makeHookCommand(deps)({})
+
+    expect(deps.events.sendBackground).not.toHaveBeenCalled()
+    expect(process.exit).toHaveBeenCalledWith(0)
   })
 
   it('calls detectSlashCommand for SessionStart event', async () => {
