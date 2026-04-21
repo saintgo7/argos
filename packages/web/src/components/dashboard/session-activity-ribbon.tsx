@@ -49,7 +49,7 @@ function TooltipBody({
     )
   }
 
-  if (event.kind === 'message' && event.role === 'ASSISTANT') {
+  if (event.kind === 'message') {
     return (
       <>
         <p className="font-medium text-gray-900">Agent</p>
