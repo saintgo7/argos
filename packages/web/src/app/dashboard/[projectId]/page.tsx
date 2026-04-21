@@ -34,10 +34,11 @@ function periodLabel(from: Date, to: Date): string {
 function OverviewContent({ projectId }: { projectId: string }) {
   const searchParams = useSearchParams()
   const today = new Date()
-  const thirtyDaysAgo = subDays(today, 30)
+  const sevenDaysAgo = format(subDays(today, 7), 'yyyy-MM-dd')
+  const todayStr = format(today, 'yyyy-MM-dd')
 
-  const from = searchParams.get('from') || format(thirtyDaysAgo, 'yyyy-MM-dd')
-  const to = searchParams.get('to') || format(today, 'yyyy-MM-dd')
+  const from = searchParams.get('from') || sevenDaysAgo
+  const to = searchParams.get('to') || todayStr
 
   const fromDate = new Date(from)
   const toDate = new Date(to)
@@ -48,8 +49,6 @@ function OverviewContent({ projectId }: { projectId: string }) {
   const usage = overview?.usage
 
   // Top 5 users by tokens, always last 7 days (independent of the main date range)
-  const sevenDaysAgo = format(subDays(today, 7), 'yyyy-MM-dd')
-  const todayStr = format(today, 'yyyy-MM-dd')
   const { data: topUsersData, isLoading: usersLoading } =
     useDashboardUsers(projectId, sevenDaysAgo, todayStr, 1, 10, 'tokens')
 

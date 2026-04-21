@@ -177,6 +177,9 @@ async function computeDailyRollup(projectId: string, date: Date): Promise<DailyR
         AND timestamp <= ${to}
       GROUP BY model
     `,
+    // user-level 집계는 각 테이블을 user_id로 먼저 GROUP BY한 뒤 LEFT JOIN한다.
+    // 직접 JOIN하면 usage_records × sessions × events 만큼 cartesian fan-out이 일어나
+    // SUM/COUNT가 곱셈으로 부풀려지고, 쿼리가 DB statement_timeout에 걸린다.
     db.$queryRaw<Array<{
       id: string
       name: string
@@ -188,33 +191,55 @@ async function computeDailyRollup(projectId: string, date: Date): Promise<DailyR
       skill_calls: bigint
       agent_calls: bigint
     }>>`
+      WITH ur_agg AS (
+        SELECT
+          user_id,
+          SUM(input_tokens)::bigint          AS input_tokens,
+          SUM(output_tokens)::bigint         AS output_tokens,
+          SUM(estimated_cost_usd)            AS cost_usd
+        FROM usage_records
+        WHERE project_id = ${projectId}
+          AND timestamp >= ${from}
+          AND timestamp <= ${to}
+        GROUP BY user_id
+      ),
+      s_agg AS (
+        SELECT
+          user_id,
+          COUNT(*)::bigint AS session_count
+        FROM claude_sessions
+        WHERE project_id = ${projectId}
+          AND started_at >= ${from}
+          AND started_at <= ${to}
+        GROUP BY user_id
+      ),
+      e_agg AS (
+        SELECT
+          user_id,
+          COUNT(*) FILTER (WHERE is_skill_call)::bigint AS skill_calls,
+          COUNT(*) FILTER (WHERE is_agent_call)::bigint AS agent_calls
+        FROM events
+        WHERE project_id = ${projectId}
+          AND timestamp >= ${from}
+          AND timestamp <= ${to}
+        GROUP BY user_id
+      )
       SELECT
         u.id,
         u.name,
         u.avatar_url,
-        COUNT(DISTINCT s.id) AS session_count,
-        SUM(ur.input_tokens) AS input_tokens,
-        SUM(ur.output_tokens) AS output_tokens,
-        SUM(ur.estimated_cost_usd) AS cost_usd,
-        COUNT(CASE WHEN e.is_skill_call THEN 1 END) AS skill_calls,
-        COUNT(CASE WHEN e.is_agent_call THEN 1 END) AS agent_calls
+        COALESCE(s_agg.session_count, 0)::bigint AS session_count,
+        ur_agg.input_tokens,
+        ur_agg.output_tokens,
+        ur_agg.cost_usd,
+        COALESCE(e_agg.skill_calls, 0)::bigint   AS skill_calls,
+        COALESCE(e_agg.agent_calls, 0)::bigint   AS agent_calls
       FROM users u
-      LEFT JOIN usage_records ur ON ur.user_id = u.id AND ur.project_id = ${projectId}
-        AND ur.timestamp BETWEEN ${from} AND ${to}
-      LEFT JOIN claude_sessions s ON s.user_id = u.id AND s.project_id = ${projectId}
-        AND s.started_at BETWEEN ${from} AND ${to}
-      LEFT JOIN events e ON e.user_id = u.id AND e.project_id = ${projectId}
-        AND e.timestamp BETWEEN ${from} AND ${to}
-      WHERE EXISTS (
-        SELECT 1 FROM usage_records ur2
-          WHERE ur2.user_id = u.id AND ur2.project_id = ${projectId}
-            AND ur2.timestamp BETWEEN ${from} AND ${to}
-      ) OR EXISTS (
-        SELECT 1 FROM claude_sessions s2
-          WHERE s2.user_id = u.id AND s2.project_id = ${projectId}
-            AND s2.started_at BETWEEN ${from} AND ${to}
-      )
-      GROUP BY u.id, u.name, u.avatar_url
+      LEFT JOIN ur_agg ON ur_agg.user_id = u.id
+      LEFT JOIN s_agg  ON s_agg.user_id  = u.id
+      LEFT JOIN e_agg  ON e_agg.user_id  = u.id
+      WHERE ur_agg.user_id IS NOT NULL
+         OR s_agg.user_id  IS NOT NULL
     `,
     db.$queryRaw<Array<{ user_id: string }>>`
       SELECT DISTINCT user_id FROM usage_records

@@ -16,9 +16,9 @@ import { Button } from '@/components/ui/button'
 function AgentsContent({ projectId }: { projectId: string }) {
   const searchParams = useSearchParams()
   const today = new Date()
-  const thirtyDaysAgo = subDays(today, 30)
+  const sevenDaysAgo = subDays(today, 7)
 
-  const from = searchParams.get('from') || format(thirtyDaysAgo, 'yyyy-MM-dd')
+  const from = searchParams.get('from') || format(sevenDaysAgo, 'yyyy-MM-dd')
   const to = searchParams.get('to') || format(today, 'yyyy-MM-dd')
 
   const { data, isLoading, error, refetch } = useDashboardAgents(projectId, from, to)

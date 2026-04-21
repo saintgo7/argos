@@ -52,9 +52,9 @@ function SessionsContent({ projectId }: { projectId: string }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const today = new Date()
-  const thirtyDaysAgo = subDays(today, 30)
+  const sevenDaysAgo = subDays(today, 7)
 
-  const from = searchParams.get('from') || format(thirtyDaysAgo, 'yyyy-MM-dd')
+  const from = searchParams.get('from') || format(sevenDaysAgo, 'yyyy-MM-dd')
   const to = searchParams.get('to') || format(today, 'yyyy-MM-dd')
   const page = Math.max(1, Number(searchParams.get('page')) || 1)
   const pageSize = Number(searchParams.get('pageSize')) || DEFAULT_PAGE_SIZE
