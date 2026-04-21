@@ -16,13 +16,13 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @argos/api exec prisma generate
+      - run: pnpm --filter @argos/web exec prisma generate
       - run: pnpm --filter @argos/shared build
-      - run: pnpm --filter @argos/api build
       - run: pnpm --filter argos-ai build
       - run: pnpm --filter argos-ai test
       - run: pnpm --filter @argos/web build
         env:
           AUTH_SECRET: "ci-placeholder-secret-min-32-chars-here"
-          API_URL: "http://localhost:3001"
-          NEXT_PUBLIC_API_URL: "http://localhost:3001"
+          JWT_SECRET: "ci-placeholder-jwt-secret-min-32-chars"
+          DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
+          DIRECT_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"

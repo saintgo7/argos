@@ -13,12 +13,10 @@ export function CliAuthClient({ state, userName, userEmail, argosToken }: Props)
   const [status, setStatus] = useState<'pending' | 'approved' | 'denied' | 'error'>('pending')
   const [loading, setLoading] = useState(false)
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL!
-
   async function handleAllow() {
     setLoading(true)
     try {
-      const res = await fetch(`${apiUrl}/api/auth/cli-callback`, {
+      const res = await fetch(`/api/auth/cli-callback`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${argosToken}`,
@@ -38,7 +36,7 @@ export function CliAuthClient({ state, userName, userEmail, argosToken }: Props)
   async function handleDeny() {
     setLoading(true)
     try {
-      await fetch(`${apiUrl}/api/auth/cli-callback`, {
+      await fetch(`/api/auth/cli-callback`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${argosToken}`,

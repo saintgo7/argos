@@ -1,11 +1,9 @@
+/**
+ * 브라우저(클라이언트 컴포넌트)에서 동일 Next.js 앱의 라우트 핸들러를 호출하는 헬퍼.
+ * 라우트가 같은 origin에 있으므로 상대경로 fetch면 충분하다.
+ */
 export async function apiGet<T>(path: string, token: string): Promise<T> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL
-  if (!baseUrl) {
-    throw new Error('NEXT_PUBLIC_API_URL is not defined')
-  }
-
-  const url = `${baseUrl}${path}`
-  const res = await fetch(url, {
+  const res = await fetch(path, {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',

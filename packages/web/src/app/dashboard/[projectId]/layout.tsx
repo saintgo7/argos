@@ -2,6 +2,8 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
+import { verifyJwt } from '@/lib/server/jwt'
+import { getProjectForUser } from '@/lib/server/project-actions'
 
 export default async function DashboardLayout({
   children,
@@ -18,21 +20,18 @@ export default async function DashboardLayout({
 
   const { projectId } = await params
 
-  // Fetch project details
+  // session.argosToken → userId → 직접 비즈니스 로직 호출
   let projectName = 'Project'
   try {
-    const res = await fetch(`${process.env.API_URL}/api/projects/${projectId}`, {
-      headers: {
-        Authorization: `Bearer ${session.argosToken}`,
-      },
-    })
-
-    if (res.ok) {
-      const data = await res.json()
-      projectName = data.name
+    const payload = await verifyJwt(session.argosToken)
+    if (payload) {
+      const result = await getProjectForUser(projectId, payload.sub)
+      if (result.kind === 'ok') {
+        projectName = result.project.name
+      }
     }
   } catch {
-    // Use default project name
+    // 기본 프로젝트 이름 사용
   }
 
   return (
