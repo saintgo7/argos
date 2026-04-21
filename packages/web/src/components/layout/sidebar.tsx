@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { useParams, usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
@@ -74,7 +75,15 @@ export function Sidebar() {
     <>
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 border-r bg-muted/40 h-screen sticky top-0 flex-col">
-        <div className="p-6">
+        <div className="p-6 flex items-center gap-2">
+          <Image
+            src="/argos-logo.svg"
+            alt="Argos"
+            width={28}
+            height={28}
+            className="rounded-md"
+            priority
+          />
           <h2 className="text-lg font-semibold">Argos</h2>
         </div>
         <div className="px-3 pb-3">
@@ -101,7 +110,17 @@ export function Sidebar() {
       {/* Mobile Navigation */}
       <div className="md:hidden sticky top-0 z-10 bg-background border-b">
         <div className="flex items-center gap-3 p-4">
-          <h2 className="text-lg font-semibold shrink-0">Argos</h2>
+          <div className="flex items-center gap-2 shrink-0">
+            <Image
+              src="/argos-logo.svg"
+              alt="Argos"
+              width={24}
+              height={24}
+              className="rounded-md"
+              priority
+            />
+            <h2 className="text-lg font-semibold">Argos</h2>
+          </div>
           <div className="flex-1 min-w-0">
             <ProjectSwitcher />
           </div>
