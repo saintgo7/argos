@@ -81,6 +81,20 @@ export function formatRelativeTime(timestamp: string, baseTimestamp?: string): s
   return `+${hours}h ${minutes}m`
 }
 
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * < 24h → relative ("20시간 전"), 그 이상 → "yyyy-MM-dd HH:mm:ss".
+ * 정확한 시각은 hover 등 title 속성에 별도로 넣어 보조한다.
+ */
+export function formatLastUsed(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  if (diffMs < ONE_DAY_MS) {
+    return formatRelativeTime(iso)
+  }
+  return formatDateTimeFull(iso)
+}
+
 export function formatDuration(startedAt: string, endedAt?: string | null): string {
   const start = new Date(startedAt).getTime()
   const end = endedAt ? new Date(endedAt).getTime() : Date.now()

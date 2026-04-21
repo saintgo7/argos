@@ -4,34 +4,14 @@ import { use, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { subDays, format, differenceInDays } from 'date-fns'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
-import { SkillBarChart } from '@/components/dashboard/skill-bar-chart'
+import { RankedBarChart } from '@/components/dashboard/ranked-bar-chart'
 import { ChartCard } from '@/components/dashboard/chart-card'
+import { KpiCard } from '@/components/dashboard/kpi-card'
 import { useDashboardSkills } from '@/hooks/use-dashboard-skills'
-import { formatDateTimeFull, formatRelativeTime } from '@/lib/format'
+import { formatDateTimeFull, formatLastUsed } from '@/lib/format'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-
-const ONE_DAY_MS = 24 * 60 * 60 * 1000
-
-function formatLastUsed(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime()
-  if (diffMs < ONE_DAY_MS) {
-    return formatRelativeTime(iso)
-  }
-  return formatDateTimeFull(iso)
-}
-
-function KpiCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-6">
-      <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-        {label}
-      </div>
-      <div className="text-3xl font-semibold tabular-nums">{value}</div>
-    </div>
-  )
-}
 
 function SkillsContent({ projectId }: { projectId: string }) {
   const searchParams = useSearchParams()
@@ -129,7 +109,10 @@ function SkillsContent({ projectId }: { projectId: string }) {
       </div>
 
       <ChartCard title="Top skills (by invocations)">
-        <SkillBarChart data={skills} />
+        <RankedBarChart
+          data={skills.map(s => ({ label: s.skillName, value: s.callCount }))}
+          valueLabel="Invocations"
+        />
       </ChartCard>
 
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">

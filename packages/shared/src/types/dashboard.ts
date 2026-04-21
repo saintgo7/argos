@@ -64,6 +64,8 @@ export interface SkillStat {
 export interface AgentStat {
   agentType: string
   callCount: number
+  sessionCount: number
+  lastUsedAt: string
   sampleDesc?: string | null
 }
 

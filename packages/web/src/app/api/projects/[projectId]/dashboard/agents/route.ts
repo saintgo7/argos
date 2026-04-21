@@ -30,12 +30,16 @@ export async function GET(
     const agents = await db.$queryRaw<Array<{
       agent_type: string
       call_count: bigint
+      session_count: bigint
+      last_used_at: Date
       sample_desc: string | null
     }>>`
       WITH agent_counts AS (
         SELECT
           agent_type,
-          COUNT(*) AS call_count
+          COUNT(*) AS call_count,
+          COUNT(DISTINCT session_id) AS session_count,
+          MAX(timestamp) AS last_used_at
         FROM events
         WHERE project_id = ${projectId}
           AND is_agent_call = true
@@ -59,6 +63,8 @@ export async function GET(
       SELECT
         ac.agent_type,
         ac.call_count,
+        ac.session_count,
+        ac.last_used_at,
         ags.agent_desc AS sample_desc
       FROM agent_counts ac
       LEFT JOIN agent_samples ags ON ags.agent_type = ac.agent_type
@@ -69,6 +75,8 @@ export async function GET(
     const agentStats: AgentStat[] = agents.map(a => ({
       agentType: a.agent_type,
       callCount: Number(a.call_count),
+      sessionCount: Number(a.session_count),
+      lastUsedAt: a.last_used_at.toISOString(),
       sampleDesc: a.sample_desc
     }))
 
