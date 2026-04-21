@@ -159,6 +159,7 @@ export default function SessionDetailPage({
                 events={events}
                 selectedIdx={safeIdx}
                 onSelect={setSelectedIdx}
+                sessionStartedAt={data.startedAt}
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-[minmax(320px,2fr)_3fr] min-h-[500px]">
