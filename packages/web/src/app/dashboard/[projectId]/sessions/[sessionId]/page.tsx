@@ -168,6 +168,7 @@ export default function SessionDetailPage({
                   events={events}
                   selectedIdx={safeIdx ?? -1}
                   onSelect={setSelectedIdx}
+                  sessionStartedAt={data.startedAt}
                 />
               </div>
               <div className="overflow-hidden max-h-[calc(100vh-360px)]">

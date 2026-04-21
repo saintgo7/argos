@@ -5,15 +5,18 @@ type EventListProps = {
   events: TimelineEvent[];
   selectedIdx: number;
   onSelect: (idx: number) => void;
+  sessionStartedAt: string;
 };
 
-function formatTime(timestamp: string): string {
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return "";
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mm = String(date.getMinutes()).padStart(2, "0");
-  const ss = String(date.getSeconds()).padStart(2, "0");
-  return `${hh}:${mm}:${ss}`;
+function formatElapsed(timestamp: string, sessionStartedAt: string): string {
+  const t = new Date(timestamp).getTime();
+  const start = new Date(sessionStartedAt).getTime();
+  if (Number.isNaN(t) || Number.isNaN(start)) return "";
+  const diffSec = Math.max(0, Math.floor((t - start) / 1000));
+  const h = Math.floor(diffSec / 3600);
+  const m = Math.floor((diffSec % 3600) / 60);
+  const s = diffSec % 60;
+  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 function getTypeLabel(event: TimelineEvent): string {
@@ -48,7 +51,12 @@ function getIcon(event: TimelineEvent) {
   return { Icon: Wrench, bg: isSpecial ? "bg-amber-500" : "bg-gray-400" };
 }
 
-export function EventList({ events, selectedIdx, onSelect }: EventListProps) {
+export function EventList({
+  events,
+  selectedIdx,
+  onSelect,
+  sessionStartedAt,
+}: EventListProps) {
   if (events.length === 0) {
     return (
       <div className="p-6 text-center text-sm text-gray-500">
@@ -64,7 +72,7 @@ export function EventList({ events, selectedIdx, onSelect }: EventListProps) {
         const isSelected = idx === selectedIdx;
         const label = getTypeLabel(event);
         const preview = getPreview(event);
-        const time = formatTime(event.timestamp);
+        const time = formatElapsed(event.timestamp, sessionStartedAt);
 
         return (
           <li key={idx}>
