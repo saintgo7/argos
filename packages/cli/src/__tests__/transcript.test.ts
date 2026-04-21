@@ -211,7 +211,7 @@ describe('extractMessages', () => {
     expect(result[0].content).toBe('Legacy hello')
   })
 
-  it('skips user entries with array content (tool_result)', async () => {
+  it('user array-content without matching tool_use yields no messages', async () => {
     const path = writejsonl(tempDir, [
       {
         type: 'user',
@@ -223,33 +223,38 @@ describe('extractMessages', () => {
     expect(result).toHaveLength(0)
   })
 
-  it('captures tool_use blocks from assistant messages', async () => {
+  it('emits separate TOOL row for each tool_use block', async () => {
     const path = writejsonl(tempDir, [
       {
         type: 'assistant',
+        timestamp: '2024-01-01T00:00:00.000Z',
         message: {
           content: [
             { type: 'text', text: 'Let me read the file.' },
-            { type: 'tool_use', name: 'Read', input: { file_path: '/tmp/test.ts' } },
+            { type: 'tool_use', id: 'tu_1', name: 'Read', input: { file_path: '/tmp/test.ts' } },
           ],
         },
       },
     ])
 
     const result = await extractMessages(path)
-    expect(result).toHaveLength(1)
-    expect(result[0].content).toContain('Let me read the file.')
-    expect(result[0].content).toContain('[Tool: Read]')
-    expect(result[0].content).toContain('/tmp/test.ts')
+    expect(result).toHaveLength(2)
+    expect(result[0].role).toBe('ASSISTANT')
+    expect(result[0].content).toBe('Let me read the file.')
+    expect(result[1].role).toBe('TOOL')
+    expect(result[1].toolName).toBe('Read')
+    expect(result[1].toolInput).toEqual({ file_path: '/tmp/test.ts' })
+    expect(result[1].toolUseId).toBe('tu_1')
   })
 
-  it('captures tool_use-only assistant entries', async () => {
+  it('tool_use-only assistant entry produces just a TOOL row (no ASSISTANT row)', async () => {
     const path = writejsonl(tempDir, [
       {
         type: 'assistant',
+        timestamp: '2024-01-01T00:00:00.000Z',
         message: {
           content: [
-            { type: 'tool_use', name: 'Bash', input: { command: 'ls -la' } },
+            { type: 'tool_use', id: 'tu_1', name: 'Bash', input: { command: 'ls -la' } },
           ],
         },
       },
@@ -257,8 +262,65 @@ describe('extractMessages', () => {
 
     const result = await extractMessages(path)
     expect(result).toHaveLength(1)
-    expect(result[0].content).toContain('[Tool: Bash]')
-    expect(result[0].content).toContain('ls -la')
+    expect(result[0].role).toBe('TOOL')
+    expect(result[0].toolName).toBe('Bash')
+    expect(result[0].toolInput).toEqual({ command: 'ls -la' })
+  })
+
+  it('fills TOOL content + durationMs from matching tool_result', async () => {
+    const path = writejsonl(tempDir, [
+      {
+        type: 'assistant',
+        timestamp: '2024-01-01T00:00:00.000Z',
+        message: {
+          content: [{ type: 'tool_use', id: 'tu_1', name: 'Bash', input: { command: 'ls' } }],
+        },
+      },
+      {
+        type: 'user',
+        timestamp: '2024-01-01T00:00:02.500Z',
+        message: {
+          content: [{ type: 'tool_result', tool_use_id: 'tu_1', content: 'file-a\nfile-b' }],
+        },
+      },
+    ])
+
+    const result = await extractMessages(path)
+    expect(result).toHaveLength(1)
+    expect(result[0].role).toBe('TOOL')
+    expect(result[0].content).toBe('file-a\nfile-b')
+    expect(result[0].durationMs).toBe(2500)
+  })
+
+  it('tool_result with array content is flattened to joined text', async () => {
+    const path = writejsonl(tempDir, [
+      {
+        type: 'assistant',
+        timestamp: '2024-01-01T00:00:00.000Z',
+        message: {
+          content: [{ type: 'tool_use', id: 'tu_1', name: 'Read', input: { file_path: '/a' } }],
+        },
+      },
+      {
+        type: 'user',
+        timestamp: '2024-01-01T00:00:01.000Z',
+        message: {
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'tu_1',
+              content: [
+                { type: 'text', text: 'line1' },
+                { type: 'text', text: 'line2' },
+              ],
+            },
+          ],
+        },
+      },
+    ])
+
+    const result = await extractMessages(path)
+    expect(result[0].content).toBe('line1\nline2')
   })
 
   it('skips assistant entries with no text or tool_use blocks', async () => {
@@ -282,15 +344,25 @@ describe('extractMessages', () => {
     expect(result[0].content.length).toBe(50000)
   })
 
-  it('assigns sequential sequence numbers', async () => {
+  it('assigns sequential sequence numbers including TOOL rows', async () => {
     const path = writejsonl(tempDir, [
-      { type: 'user', message: { content: 'msg1' } },
-      { type: 'assistant', message: { content: [{ type: 'text', text: 'msg2' }] } },
-      { type: 'user', message: { content: 'msg3' } },
+      { type: 'user', message: { content: 'msg1' }, timestamp: '2024-01-01T00:00:00Z' },
+      {
+        type: 'assistant',
+        timestamp: '2024-01-01T00:00:01Z',
+        message: {
+          content: [
+            { type: 'text', text: 'msg2' },
+            { type: 'tool_use', id: 'tu_1', name: 'Bash', input: {} },
+          ],
+        },
+      },
+      { type: 'user', message: { content: 'msg3' }, timestamp: '2024-01-01T00:00:02Z' },
     ])
 
     const result = await extractMessages(path)
-    expect(result.map((m) => m.sequence)).toEqual([0, 1, 2])
+    expect(result.map((m) => m.sequence)).toEqual([0, 1, 2, 3])
+    expect(result.map((m) => m.role)).toEqual(['HUMAN', 'ASSISTANT', 'TOOL', 'HUMAN'])
   })
 
   it('joins multiple text blocks within one assistant message', async () => {

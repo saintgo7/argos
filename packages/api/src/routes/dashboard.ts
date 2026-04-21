@@ -11,7 +11,6 @@ import type {
   SessionItem,
   SessionDetail,
   SessionTimelineUsage,
-  SessionTimelineTool
 } from '@argos/shared'
 
 type Variables = {
@@ -427,22 +426,7 @@ dashboard.get('/sessions/:sessionId', async (c) => {
     include: {
       user: { select: { id: true, name: true } },
       usageRecords: { orderBy: { timestamp: 'asc' } },
-      messages: { orderBy: { sequence: 'asc' } },
-      events: {
-        where: {
-          eventType: { in: ['PRE_TOOL_USE', 'POST_TOOL_USE'] },
-        },
-        orderBy: { timestamp: 'asc' },
-        select: {
-          timestamp: true,
-          toolName: true,
-          eventType: true,
-          isSkillCall: true,
-          skillName: true,
-          isAgentCall: true,
-          agentType: true,
-        },
-      },
+      messages: { orderBy: [{ timestamp: 'asc' }, { sequence: 'asc' }] },
       _count: { select: { events: true } }
     }
   })
@@ -464,16 +448,6 @@ dashboard.get('/sessions/:sessionId', async (c) => {
     isSubagent: r.isSubagent,
   }))
 
-  const toolEvents: SessionTimelineTool[] = session.events.map((e) => ({
-    timestamp: e.timestamp.toISOString(),
-    toolName: e.toolName ?? 'unknown',
-    eventType: e.eventType as 'PRE_TOOL_USE' | 'POST_TOOL_USE',
-    isSkillCall: e.isSkillCall,
-    skillName: e.skillName,
-    isAgentCall: e.isAgentCall,
-    agentType: e.agentType,
-  }))
-
   const detail: SessionDetail = {
     id: session.id,
     userId: session.user.id,
@@ -485,13 +459,16 @@ dashboard.get('/sessions/:sessionId', async (c) => {
     estimatedCostUsd: totalCost,
     eventCount: session._count.events,
     messages: session.messages.map(m => ({
-      role: m.role as 'HUMAN' | 'ASSISTANT',
+      role: m.role,
       content: m.content,
       sequence: m.sequence,
-      timestamp: m.timestamp.toISOString()
+      timestamp: m.timestamp.toISOString(),
+      toolName: m.toolName,
+      toolInput: m.toolInput as Record<string, unknown> | null,
+      toolUseId: m.toolUseId,
+      durationMs: m.durationMs,
     })),
     usageTimeline,
-    toolEvents,
   }
 
   return c.json(detail)

@@ -1,5 +1,5 @@
 export type EventType = 'SESSION_START' | 'PRE_TOOL_USE' | 'POST_TOOL_USE' | 'STOP' | 'SUBAGENT_STOP'
-export type MessageRole = 'HUMAN' | 'ASSISTANT'
+export type MessageRole = 'HUMAN' | 'ASSISTANT' | 'TOOL'
 
 export interface UsagePayload {
   inputTokens: number
@@ -16,9 +16,14 @@ export interface UsagePerTurnPayload extends UsagePayload {
 
 export interface MessagePayload {
   role: MessageRole
-  content: string   // text 블록만, 50,000자 truncation
+  content: string   // HUMAN/ASSISTANT: text 블록, TOOL: tool_result 텍스트. 50,000자 truncation
   sequence: number  // 0-based
   timestamp: string // ISO 8601
+  // TOOL role 전용 필드
+  toolName?: string
+  toolInput?: Record<string, unknown>
+  toolUseId?: string
+  durationMs?: number
 }
 
 // CLI가 POST /api/events로 전송하는 payload
@@ -29,6 +34,7 @@ export interface IngestEventPayload {
   toolName?: string
   toolInput?: Record<string, unknown>
   toolResponse?: string   // 2,000자 truncation
+  toolUseId?: string      // PreToolUse/PostToolUse hook stdin의 tool_use_id — TOOL Message upsert 키
   exitCode?: number
   agentId?: string        // 서브에이전트 이벤트인 경우
   isSlashCommand?: boolean // SessionStart 이벤트 시 CLI가 transcript 파싱해서 설정

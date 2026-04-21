@@ -6,7 +6,7 @@ import { EventList } from '@/components/dashboard/event-list'
 import { EventDetail } from '@/components/dashboard/event-detail'
 import { SessionTimelineChart } from '@/components/dashboard/session-timeline-chart'
 import { useSessionDetail } from '@/hooks/use-dashboard-sessions'
-import { mergeTimelineEvents } from '@/lib/timeline-events'
+import { messagesToTimeline } from '@/lib/timeline-events'
 import {
   formatTokens,
   formatCost,
@@ -35,11 +35,15 @@ export default function SessionDetailPage({
   const { data, isLoading, error, refetch } = useSessionDetail(projectId, sessionId)
 
   const events = useMemo(
-    () => (data ? mergeTimelineEvents(data.messages, data.toolEvents) : []),
+    () => (data ? messagesToTimeline(data.messages) : []),
     [data],
   )
-  const [selectedIdx, setSelectedIdx] = useState(0)
-  const safeIdx = Math.min(selectedIdx, Math.max(0, events.length - 1))
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(0)
+  const safeIdx =
+    selectedIdx === null
+      ? null
+      : Math.min(selectedIdx, Math.max(0, events.length - 1))
+  const selectedEvent = safeIdx !== null ? events[safeIdx] ?? null : null
   const [tab, setTab] = useState<'transcript' | 'debug'>('transcript')
 
   if (isLoading) {
@@ -146,7 +150,7 @@ export default function SessionDetailPage({
         <h2 className="text-lg font-semibold mb-4">Session Timeline</h2>
         <SessionTimelineChart
           usageTimeline={data.usageTimeline}
-          toolEvents={data.toolEvents}
+          messages={data.messages}
           sessionStartedAt={data.startedAt}
         />
       </div>
@@ -162,12 +166,15 @@ export default function SessionDetailPage({
               <div className="border-r border-gray-200 overflow-y-auto max-h-[calc(100vh-360px)]">
                 <EventList
                   events={events}
-                  selectedIdx={safeIdx}
+                  selectedIdx={safeIdx ?? -1}
                   onSelect={setSelectedIdx}
                 />
               </div>
               <div className="overflow-hidden max-h-[calc(100vh-360px)]">
-                <EventDetail event={events[safeIdx] ?? null} />
+                <EventDetail
+                  event={selectedEvent}
+                  onClose={() => setSelectedIdx(null)}
+                />
               </div>
             </div>
           </TabsContent>

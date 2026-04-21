@@ -220,18 +220,25 @@ model UsageRecord {
 model Message {
   id        String      @id @default(cuid())
   sessionId String      @map("session_id")
-  role      MessageRole // HUMAN | ASSISTANT
-  content   String      // text 블록만 저장 (tool_use 제외), 50,000자 truncation
-  sequence  Int         // 세션 내 메시지 순서 (0-based)
+  role      MessageRole // HUMAN | ASSISTANT | TOOL
+  content   String      // HUMAN/ASSISTANT: text 블록. TOOL: tool_result 텍스트. 50,000자 truncation
+  sequence  Int         // 세션 내 메시지 순서 (0-based, best-effort — 실시간 TOOL row는 임시값 후 Stop에서 재할당)
   timestamp DateTime    // transcript 원본 타임스탬프
+
+  // TOOL role 전용 — 다른 role에서는 모두 null
+  toolName   String? @map("tool_name")
+  toolInput  Json?   @map("tool_input")
+  toolUseId  String? @map("tool_use_id")
+  durationMs Int?    @map("duration_ms")
 
   session ClaudeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
-  @@unique([sessionId, sequence])
+  @@index([sessionId, toolUseId])
   @@map("messages")
 }
 
 enum MessageRole {
   HUMAN
   ASSISTANT
+  TOOL
 }

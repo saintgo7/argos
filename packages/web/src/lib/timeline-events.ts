@@ -11,56 +11,66 @@ export type MessageEvent = {
 export type ToolEvent = {
   kind: 'tool'
   toolName: string
-  eventType: 'PRE_TOOL_USE' | 'POST_TOOL_USE'
+  toolInput: Record<string, unknown> | null
+  content: string          // tool_result 텍스트
+  durationMs: number | null
   timestamp: string
+  sequence: number
   isSkillCall: boolean
-  skillName?: string | null
+  skillName: string | null
   isAgentCall: boolean
-  agentType?: string | null
+  agentType: string | null
 }
 
 export type TimelineEvent = MessageEvent | ToolEvent
 
-export function mergeTimelineEvents(
-  messages: SessionDetail['messages'],
-  toolEvents: SessionDetail['toolEvents'],
-): TimelineEvent[] {
-  const merged: TimelineEvent[] = []
+function getSkillName(toolName: string, input: Record<string, unknown> | null): string | null {
+  if (toolName !== 'Skill' || !input) return null
+  const skill = input['skill']
+  return typeof skill === 'string' ? skill : null
+}
 
-  for (const message of messages) {
-    merged.push({
-      kind: 'message',
-      role: message.role,
-      content: message.content,
-      timestamp: message.timestamp,
-      sequence: message.sequence,
-    })
-  }
+function getAgentType(toolName: string, input: Record<string, unknown> | null): string | null {
+  if (toolName !== 'Agent' || !input) return null
+  const t = input['subagent_type']
+  return typeof t === 'string' ? t : null
+}
 
-  for (const tool of toolEvents) {
-    if (tool.eventType !== 'PRE_TOOL_USE') continue
-    merged.push({
-      kind: 'tool',
-      toolName: tool.toolName,
-      eventType: tool.eventType,
-      timestamp: tool.timestamp,
-      isSkillCall: tool.isSkillCall,
-      skillName: tool.skillName,
-      isAgentCall: tool.isAgentCall,
-      agentType: tool.agentType,
-    })
-  }
-
-  merged.sort((a, b) => {
-    if (a.timestamp < b.timestamp) return -1
-    if (a.timestamp > b.timestamp) return 1
-    if (a.kind === 'message' && b.kind === 'message') {
-      return a.sequence - b.sequence
+export function messagesToTimeline(messages: SessionDetail['messages']): TimelineEvent[] {
+  const events: TimelineEvent[] = messages.map((m) => {
+    if (m.role === 'TOOL') {
+      const toolName = m.toolName ?? 'unknown'
+      const toolInput = (m.toolInput ?? null) as Record<string, unknown> | null
+      const skillName = getSkillName(toolName, toolInput)
+      const agentType = getAgentType(toolName, toolInput)
+      return {
+        kind: 'tool',
+        toolName,
+        toolInput,
+        content: m.content,
+        durationMs: m.durationMs ?? null,
+        timestamp: m.timestamp,
+        sequence: m.sequence,
+        isSkillCall: toolName === 'Skill',
+        skillName,
+        isAgentCall: toolName === 'Agent',
+        agentType,
+      }
     }
-    if (a.kind === 'message') return -1
-    if (b.kind === 'message') return 1
-    return 0
+    return {
+      kind: 'message',
+      role: m.role,
+      content: m.content,
+      timestamp: m.timestamp,
+      sequence: m.sequence,
+    }
   })
 
-  return merged
+  events.sort((a, b) => {
+    if (a.timestamp < b.timestamp) return -1
+    if (a.timestamp > b.timestamp) return 1
+    return a.sequence - b.sequence
+  })
+
+  return events
 }

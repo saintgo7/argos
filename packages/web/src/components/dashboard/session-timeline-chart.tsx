@@ -11,12 +11,17 @@ import {
   TooltipProps,
 } from 'recharts'
 import { formatTokens, formatCost, formatRelativeTime } from '@/lib/format'
-import type { SessionTimelineUsage, SessionTimelineTool } from '@argos/shared'
+import type { SessionTimelineUsage, SessionDetail } from '@argos/shared'
 
 interface SessionTimelineChartProps {
   usageTimeline: SessionTimelineUsage[]
-  toolEvents: SessionTimelineTool[]
+  messages: SessionDetail['messages']
   sessionStartedAt: string
+}
+
+interface ToolCallPoint {
+  timestamp: string
+  toolName: string
 }
 
 interface ChartDataItem {
@@ -31,12 +36,9 @@ interface ChartDataItem {
 function getToolSummaryForIndex(
   index: number,
   usageTimeline: SessionTimelineUsage[],
-  toolEvents: SessionTimelineTool[]
+  toolCalls: ToolCallPoint[]
 ): string {
-  // POST_TOOL_USE 이벤트만 필터링
-  const postToolEvents = toolEvents.filter((e) => e.eventType === 'POST_TOOL_USE')
-
-  if (postToolEvents.length === 0) return ''
+  if (toolCalls.length === 0) return ''
 
   const currentTimestamp = new Date(usageTimeline[index]!.timestamp).getTime()
   const prevTimestamp =
@@ -44,7 +46,7 @@ function getToolSummaryForIndex(
 
   // 현재 usageTimeline timestamp 이전이면서, 이전 usageTimeline timestamp 이후의 tool events 찾기
   // 첫 번째 bar(index=0)는 prevTimestamp가 0이므로 해당 bar 이전의 모든 이벤트를 포함
-  const relevantTools = postToolEvents.filter((e) => {
+  const relevantTools = toolCalls.filter((e) => {
     const toolTimestamp = new Date(e.timestamp).getTime()
     return toolTimestamp <= currentTimestamp && toolTimestamp > prevTimestamp
   })
@@ -121,7 +123,7 @@ function CustomTooltip({
 
 export function SessionTimelineChart({
   usageTimeline,
-  toolEvents,
+  messages,
   sessionStartedAt,
 }: SessionTimelineChartProps) {
   if (usageTimeline.length === 0) {
@@ -130,13 +132,17 @@ export function SessionTimelineChart({
     )
   }
 
+  const toolCalls: ToolCallPoint[] = messages
+    .filter((m) => m.role === 'TOOL')
+    .map((m) => ({ timestamp: m.timestamp, toolName: m.toolName ?? 'unknown' }))
+
   const chartData: ChartDataItem[] = usageTimeline.map((u, idx) => ({
     relativeTime: formatRelativeTime(u.timestamp, sessionStartedAt),
     input: u.inputTokens,
     output: u.outputTokens,
     cost: u.estimatedCostUsd,
     model: u.model,
-    toolSummary: getToolSummaryForIndex(idx, usageTimeline, toolEvents),
+    toolSummary: getToolSummaryForIndex(idx, usageTimeline, toolCalls),
   }))
 
   return (

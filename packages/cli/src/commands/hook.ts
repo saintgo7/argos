@@ -13,6 +13,7 @@ interface HookStdinPayload {
   tool_name?: string
   tool_input?: Record<string, unknown>
   tool_response?: string
+  tool_use_id?: string
   exit_code?: number
 }
 
@@ -114,6 +115,10 @@ export function buildPayload(
   if (event.tool_response) {
     // Truncate to 2000 characters
     payload.toolResponse = event.tool_response.slice(0, 2000)
+  }
+
+  if (event.tool_use_id) {
+    payload.toolUseId = event.tool_use_id
   }
 
   if (event.exit_code !== undefined) {

@@ -60,29 +60,43 @@ app.post('/', authMiddleware, async (c) => {
 
   // 4. deriveFields(payload)로 파생 필드 계산
   const derived = deriveFields(payload)
-
-  // 5. Event insert
   const eventType = mapHookEventNameToEventType(payload.hookEventName)
 
-  await db.event.create({
-    data: {
+  // 5. Event insert — PRE_TOOL_USE는 Event 대신 TOOL Message로 기록
+  if (eventType !== 'PRE_TOOL_USE') {
+    await db.event.create({
+      data: {
+        sessionId: payload.sessionId,
+        userId,
+        projectId: payload.projectId,
+        eventType,
+        toolName: payload.toolName ?? null,
+        toolInput: (payload.toolInput as Prisma.InputJsonValue) ?? null,
+        toolResponse: truncateToolResponse(payload.toolResponse) ?? null,
+        exitCode: payload.exitCode ?? null,
+        isSkillCall: derived.isSkillCall,
+        skillName: derived.skillName,
+        isSlashCommand: derived.isSlashCommand,
+        isAgentCall: derived.isAgentCall,
+        agentType: derived.agentType,
+        agentDesc: derived.agentDesc,
+        agentId: payload.agentId ?? null,
+      },
+    })
+  }
+
+  // 5-1. PRE/POST TOOL 이벤트는 TOOL Message row upsert로 실시간 기록
+  // Stop 때 transcript 기반으로 전체 교체되므로 여기선 best-effort 채움
+  if ((eventType === 'PRE_TOOL_USE' || eventType === 'POST_TOOL_USE') && payload.toolUseId && payload.toolName) {
+    await upsertToolMessage({
       sessionId: payload.sessionId,
-      userId,
-      projectId: payload.projectId,
-      eventType,
-      toolName: payload.toolName ?? null,
-      toolInput: (payload.toolInput as Prisma.InputJsonValue) ?? null,
-      toolResponse: truncateToolResponse(payload.toolResponse) ?? null,
-      exitCode: payload.exitCode ?? null,
-      isSkillCall: derived.isSkillCall,
-      skillName: derived.skillName,
-      isSlashCommand: derived.isSlashCommand,
-      isAgentCall: derived.isAgentCall,
-      agentType: derived.agentType,
-      agentDesc: derived.agentDesc,
-      agentId: payload.agentId ?? null,
-    },
-  })
+      toolUseId: payload.toolUseId,
+      toolName: payload.toolName,
+      toolInput: payload.toolInput,
+      toolResponse: payload.toolResponse,
+      isPost: eventType === 'POST_TOOL_USE',
+    })
+  }
 
   // 6. 즉시 202 Accepted 응답
   c.status(202)
@@ -127,18 +141,25 @@ app.post('/', authMiddleware, async (c) => {
           })
         }
 
-        // messages가 있으면 Message bulk insert
+        // messages가 있으면 Message 교체 (transcript가 authoritative)
+        // 실시간으로 들어온 TOOL row들도 여기서 정확한 timestamp/duration/content로 덮어씀
         if (payload.messages && payload.messages.length > 0) {
-          await db.message.createMany({
-            data: payload.messages.map((m) => ({
-              sessionId: payload.sessionId,
-              role: m.role,
-              content: truncateMessageContent(m.content),
-              sequence: m.sequence,
-              timestamp: new Date(m.timestamp),
-            })),
-            skipDuplicates: true, // 재전송에 대비
-          })
+          await db.$transaction([
+            db.message.deleteMany({ where: { sessionId: payload.sessionId } }),
+            db.message.createMany({
+              data: payload.messages.map((m) => ({
+                sessionId: payload.sessionId,
+                role: m.role,
+                content: truncateMessageContent(m.content),
+                sequence: m.sequence,
+                timestamp: new Date(m.timestamp),
+                toolName: m.toolName ?? null,
+                toolInput: (m.toolInput as Prisma.InputJsonValue) ?? null,
+                toolUseId: m.toolUseId ?? null,
+                durationMs: m.durationMs ?? null,
+              })),
+            }),
+          ])
         }
       } catch {
         // 에러 발생해도 무시 (fire-and-forget)
@@ -148,6 +169,54 @@ app.post('/', authMiddleware, async (c) => {
 
   return response
 })
+
+/**
+ * PRE/POST TOOL 이벤트를 TOOL Message row로 실시간 기록한다.
+ * - PRE: row 없으면 생성 (content='', durationMs=null)
+ * - POST: row 있으면 content/durationMs 업데이트, 없으면 생성 (duration 계산 불가 → null)
+ * Stop 때 transcript 기반으로 전체 교체되므로 best-effort만 한다.
+ */
+async function upsertToolMessage(opts: {
+  sessionId: string
+  toolUseId: string
+  toolName: string
+  toolInput?: Record<string, unknown>
+  toolResponse?: string
+  isPost: boolean
+}): Promise<void> {
+  const existing = await db.message.findFirst({
+    where: { sessionId: opts.sessionId, toolUseId: opts.toolUseId },
+  })
+
+  if (existing) {
+    if (opts.isPost) {
+      const startMs = existing.timestamp.getTime()
+      const endMs = Date.now()
+      await db.message.update({
+        where: { id: existing.id },
+        data: {
+          content: truncateMessageContent(opts.toolResponse ?? ''),
+          durationMs: Math.max(0, endMs - startMs),
+        },
+      })
+    }
+    return
+  }
+
+  await db.message.create({
+    data: {
+      sessionId: opts.sessionId,
+      role: 'TOOL',
+      content: truncateMessageContent(opts.toolResponse ?? ''),
+      sequence: 0, // Stop 때 transcript 기준으로 재할당
+      timestamp: new Date(),
+      toolName: opts.toolName,
+      toolInput: (opts.toolInput as Prisma.InputJsonValue) ?? null,
+      toolUseId: opts.toolUseId,
+      durationMs: null,
+    },
+  })
+}
 
 // hookEventName → EventType 매핑
 function mapHookEventNameToEventType(hookEventName: string): EventType {

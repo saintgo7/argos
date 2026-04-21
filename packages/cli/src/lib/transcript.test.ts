@@ -277,7 +277,7 @@ describe('extractMessages', () => {
     expect(result[0].content).toBe('Legacy message')
   })
 
-  it('user 라인의 array content(tool_result)는 건너뛴다', async () => {
+  it('tool_result가 아직 본 적 없는 tool_use_id면 무시하고 user 라인은 HUMAN으로 변환되지 않는다', async () => {
     const path = writeJsonl(tempDir, [
       {
         type: 'user',
@@ -293,10 +293,11 @@ describe('extractMessages', () => {
 
     const result = await extractMessages(path)
     expect(result).toHaveLength(1)
+    expect(result[0].role).toBe('ASSISTANT')
     expect(result[0].content).toBe('response')
   })
 
-  it('assistant의 tool_use 블록을 [Tool: name] 형태로 기록한다', async () => {
+  it('assistant의 tool_use 블록은 별도 TOOL row로 분리된다', async () => {
     const path = writeJsonl(tempDir, [
       {
         type: 'assistant',
@@ -304,27 +305,30 @@ describe('extractMessages', () => {
         message: {
           content: [
             { type: 'text', text: 'Reading the file.' },
-            { type: 'tool_use', name: 'Read', input: { file_path: '/tmp/a.ts' } },
+            { type: 'tool_use', id: 'tu_1', name: 'Read', input: { file_path: '/tmp/a.ts' } },
           ],
         },
       },
     ])
 
     const result = await extractMessages(path)
-    expect(result).toHaveLength(1)
-    expect(result[0].content).toContain('Reading the file.')
-    expect(result[0].content).toContain('[Tool: Read]')
-    expect(result[0].content).toContain('/tmp/a.ts')
+    expect(result).toHaveLength(2)
+    expect(result[0].role).toBe('ASSISTANT')
+    expect(result[0].content).toBe('Reading the file.')
+    expect(result[1].role).toBe('TOOL')
+    expect(result[1].toolName).toBe('Read')
+    expect(result[1].toolInput).toEqual({ file_path: '/tmp/a.ts' })
+    expect(result[1].toolUseId).toBe('tu_1')
   })
 
-  it('tool_use만 있는 assistant 라인도 기록한다', async () => {
+  it('tool_use만 있는 assistant 라인은 TOOL row만 남긴다', async () => {
     const path = writeJsonl(tempDir, [
       {
         type: 'assistant',
         timestamp: '2024-01-01T00:00:00.000Z',
         message: {
           content: [
-            { type: 'tool_use', name: 'Bash', input: { command: 'npm test' } },
+            { type: 'tool_use', id: 'tu_1', name: 'Bash', input: { command: 'npm test' } },
           ],
         },
       },
@@ -332,8 +336,33 @@ describe('extractMessages', () => {
 
     const result = await extractMessages(path)
     expect(result).toHaveLength(1)
-    expect(result[0].content).toContain('[Tool: Bash]')
-    expect(result[0].content).toContain('npm test')
+    expect(result[0].role).toBe('TOOL')
+    expect(result[0].toolName).toBe('Bash')
+    expect(result[0].toolInput).toEqual({ command: 'npm test' })
+  })
+
+  it('tool_result가 매칭되는 TOOL row의 content/durationMs를 채운다', async () => {
+    const path = writeJsonl(tempDir, [
+      {
+        type: 'assistant',
+        timestamp: '2024-01-01T00:00:00.000Z',
+        message: {
+          content: [{ type: 'tool_use', id: 'tu_1', name: 'Bash', input: { command: 'ls' } }],
+        },
+      },
+      {
+        type: 'user',
+        timestamp: '2024-01-01T00:00:01.500Z',
+        message: {
+          content: [{ type: 'tool_result', tool_use_id: 'tu_1', content: 'output' }],
+        },
+      },
+    ])
+
+    const result = await extractMessages(path)
+    const tool = result.find((m) => m.role === 'TOOL')!
+    expect(tool.content).toBe('output')
+    expect(tool.durationMs).toBe(1500)
   })
 
   it('text/tool_use 외의 블록(thinking 등)만 있으면 건너뛴다', async () => {

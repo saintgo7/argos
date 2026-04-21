@@ -29,6 +29,16 @@ export function formatDate(s: string): string {
   }
 }
 
+export function formatDateTime(s: string): string {
+  try {
+    const date = new Date(s)
+    if (Number.isNaN(date.getTime())) return s
+    return dateFnsFormat(date, 'MM/dd/yyyy h:mm:ss a')
+  } catch {
+    return s
+  }
+}
+
 /**
  * Format a timestamp as relative time.
  * - With `baseTimestamp`: offset from base (e.g. "+3m", "+1h 5m").

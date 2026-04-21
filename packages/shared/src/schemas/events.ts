@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 const EventTypeEnum = z.enum(['SESSION_START', 'PRE_TOOL_USE', 'POST_TOOL_USE', 'STOP', 'SUBAGENT_STOP'])
-const MessageRoleEnum = z.enum(['HUMAN', 'ASSISTANT'])
+const MessageRoleEnum = z.enum(['HUMAN', 'ASSISTANT', 'TOOL'])
 
 const UsagePayloadSchema = z.object({
   inputTokens: z.number(),
@@ -20,6 +20,10 @@ const MessagePayloadSchema = z.object({
   content: z.string(),
   sequence: z.number(),
   timestamp: z.string(),
+  toolName: z.string().optional(),
+  toolInput: z.record(z.unknown()).optional(),
+  toolUseId: z.string().optional(),
+  durationMs: z.number().optional(),
 })
 
 export const IngestEventSchema = z.object({
@@ -29,6 +33,7 @@ export const IngestEventSchema = z.object({
   toolName: z.string().optional(),
   toolInput: z.record(z.unknown()).optional(),
   toolResponse: z.string().optional(),
+  toolUseId: z.string().optional(),
   exitCode: z.number().optional(),
   agentId: z.string().optional(),
   isSlashCommand: z.boolean().optional(),

@@ -6,6 +6,9 @@ interface ContentBlock {
   text?: string
   name?: string
   input?: Record<string, unknown>
+  id?: string               // tool_use.id
+  tool_use_id?: string      // tool_result.tool_use_id
+  content?: string | Array<{ type?: string; text?: string }>  // tool_result content
 }
 
 interface TranscriptLine {
@@ -148,25 +151,33 @@ export async function detectSlashCommand(transcriptPath: string): Promise<string
 }
 
 /**
- * Format a tool_use block as a readable string
+ * Flatten tool_result.content — either string or array of {type:'text', text}.
  */
-function formatToolUse(block: ContentBlock): string {
-  const name = block.name || 'unknown'
-  const input = block.input || {}
-  return `[Tool: ${name}] ${JSON.stringify(input)}`
+function toolResultText(raw: ContentBlock['content']): string {
+  if (typeof raw === 'string') return raw
+  if (!Array.isArray(raw)) return ''
+  return raw
+    .map((b) => (b.type === 'text' && b.text ? b.text : ''))
+    .filter(Boolean)
+    .join('\n')
 }
 
 /**
- * Extract all HUMAN/ASSISTANT messages from transcript
- * Returns array of MessagePayload (text + tool_use blocks, 50k truncation)
+ * Extract HUMAN/ASSISTANT/TOOL messages from transcript.
  *
- * Claude Code transcript uses type="user" for human messages (also supports legacy "human").
- * User message content can be a plain string or an array of content blocks.
- * Array-content user entries (tool_result) are skipped — only actual user text is captured.
+ * - type="user"/"human" with string content  → HUMAN
+ * - type="assistant" text blocks             → ASSISTANT (tool_use blocks excluded from content)
+ * - type="assistant" tool_use blocks         → TOOL (one per block; timestamp = assistant msg timestamp = tool start)
+ * - type="user" array content tool_result    → fills in matching TOOL's content + durationMs
+ *
+ * sequence is assigned in transcript order and is best-effort — the API may re-sequence TOOL rows
+ * that were inserted in realtime via PreToolUse/PostToolUse hooks.
  */
 export async function extractMessages(transcriptPath: string): Promise<MessagePayload[]> {
   const lines = await readTranscriptLines(transcriptPath)
   const messages: MessagePayload[] = []
+  // TOOL lookup by tool_use_id — so tool_result can fill in content/duration
+  const toolById = new Map<string, MessagePayload>()
   let sequence = 0
 
   for (const line of lines) {
@@ -174,43 +185,72 @@ export async function extractMessages(transcriptPath: string): Promise<MessagePa
     const isAssistant = line.type === 'assistant'
     if (!isUser && !isAssistant) continue
 
-    const role = isUser ? 'HUMAN' : 'ASSISTANT'
     const content = line.message?.content
+    const timestamp = line.timestamp || new Date().toISOString()
 
-    // User messages: content can be a plain string
     if (isUser) {
+      // Plain string → HUMAN message
       if (typeof content === 'string' && content.length > 0) {
         messages.push({
           role: 'HUMAN',
           content: content.slice(0, 50000),
           sequence: sequence++,
-          timestamp: line.timestamp || new Date().toISOString(),
+          timestamp,
         })
+        continue
       }
-      // Array content (tool_result blocks) — skip, not actual user input
+      // Array → look for tool_result blocks and backfill matching TOOL messages
+      if (Array.isArray(content)) {
+        for (const block of content) {
+          if (block.type !== 'tool_result' || !block.tool_use_id) continue
+          const tool = toolById.get(block.tool_use_id)
+          if (!tool) continue
+          tool.content = toolResultText(block.content).slice(0, 50000)
+          const startMs = Date.parse(tool.timestamp)
+          const endMs = Date.parse(timestamp)
+          if (!Number.isNaN(startMs) && !Number.isNaN(endMs)) {
+            tool.durationMs = Math.max(0, endMs - startMs)
+          }
+        }
+      }
       continue
     }
 
-    // Assistant messages: content is an array of content blocks
+    // Assistant
     if (!Array.isArray(content)) continue
 
-    const parts: string[] = []
+    const textParts: string[] = []
+    const toolRows: MessagePayload[] = []
+
     for (const block of content) {
       if (block.type === 'text' && block.text) {
-        parts.push(block.text)
+        textParts.push(block.text)
       } else if (block.type === 'tool_use' && block.name) {
-        parts.push(formatToolUse(block))
+        toolRows.push({
+          role: 'TOOL',
+          content: '',
+          sequence: 0, // assigned below
+          timestamp,
+          toolName: block.name,
+          toolInput: block.input || {},
+          toolUseId: block.id,
+        })
       }
     }
 
-    if (parts.length > 0) {
-      const fullText = parts.join('\n')
+    if (textParts.length > 0) {
       messages.push({
         role: 'ASSISTANT',
-        content: fullText.slice(0, 50000),
+        content: textParts.join('\n').slice(0, 50000),
         sequence: sequence++,
-        timestamp: line.timestamp || new Date().toISOString(),
+        timestamp,
       })
+    }
+
+    for (const tool of toolRows) {
+      tool.sequence = sequence++
+      messages.push(tool)
+      if (tool.toolUseId) toolById.set(tool.toolUseId, tool)
     }
   }
 

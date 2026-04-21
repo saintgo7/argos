@@ -67,19 +67,19 @@ export interface SessionTimelineUsage {
   isSubagent: boolean
 }
 
-/** 세션 타임라인 차트용 — tool call 이벤트 1건 */
-export interface SessionTimelineTool {
+export interface SessionDetailMessage {
+  role: MessageRole
+  content: string
+  sequence: number
   timestamp: string
-  toolName: string
-  eventType: 'PRE_TOOL_USE' | 'POST_TOOL_USE'
-  isSkillCall: boolean
-  skillName?: string | null
-  isAgentCall: boolean
-  agentType?: string | null
+  // TOOL role 전용
+  toolName?: string | null
+  toolInput?: Record<string, unknown> | null
+  toolUseId?: string | null
+  durationMs?: number | null
 }
 
 export interface SessionDetail extends SessionItem {
-  messages: Array<{ role: MessageRole; content: string; sequence: number; timestamp: string }>
-  usageTimeline: SessionTimelineUsage[]   // 신규
-  toolEvents: SessionTimelineTool[]       // 신규
+  messages: SessionDetailMessage[]
+  usageTimeline: SessionTimelineUsage[]
 }
