@@ -13,23 +13,25 @@ export async function assertProjectAccess(
 ): Promise<ProjectAccessResult> {
   const project = await db.project.findUnique({
     where: { id: projectId },
-    select: { orgId: true }
+    select: {
+      orgId: true,
+      organization: {
+        select: {
+          memberships: {
+            where: { userId },
+            select: { id: true },
+            take: 1,
+          },
+        },
+      },
+    },
   })
 
   if (!project) {
     throw new Error('Project not found')
   }
 
-  const membership = await db.orgMembership.findUnique({
-    where: {
-      userId_orgId: {
-        userId,
-        orgId: project.orgId
-      }
-    }
-  })
-
-  if (!membership) {
+  if (project.organization.memberships.length === 0) {
     throw new Error('Forbidden')
   }
 

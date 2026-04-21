@@ -7,3 +7,6 @@ dist/
 .env.local
 .turbo
 .vercel
+backups/
+*.dump
+*.sql.gz

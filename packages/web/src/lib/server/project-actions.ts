@@ -25,14 +25,8 @@ export interface ProjectDetail {
 export async function getProjectsForUser(
   userId: string
 ): Promise<ProjectListItem[]> {
-  const memberships = await db.orgMembership.findMany({
-    where: { userId },
-  })
-
-  const orgIds = memberships.map((m) => m.orgId)
-
   const projectList = await db.project.findMany({
-    where: { orgId: { in: orgIds } },
+    where: { organization: { memberships: { some: { userId } } } },
     include: { organization: true },
   })
 
@@ -62,17 +56,29 @@ export async function getProjectForUser(
 ): Promise<GetProjectForUserResult> {
   const project = await db.project.findUnique({
     where: { id: projectId },
+    select: {
+      id: true,
+      orgId: true,
+      name: true,
+      slug: true,
+      createdAt: true,
+      organization: {
+        select: {
+          memberships: {
+            where: { userId },
+            select: { id: true },
+            take: 1,
+          },
+        },
+      },
+    },
   })
 
   if (!project) {
     return { kind: 'not_found' }
   }
 
-  const membership = await db.orgMembership.findUnique({
-    where: { userId_orgId: { userId, orgId: project.orgId } },
-  })
-
-  if (!membership) {
+  if (project.organization.memberships.length === 0) {
     return { kind: 'forbidden' }
   }
 

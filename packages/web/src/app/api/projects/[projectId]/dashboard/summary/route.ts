@@ -27,33 +27,33 @@ export async function GET(
     const toQuery = req.nextUrl.searchParams.get('to') ?? undefined
     const { from, to } = parseDateRange(fromQuery, toQuery)
 
-    const [sessionCount, usageTotals, activeUsers, topSkills, topAgents] = await Promise.all([
+    const [sessionCount, usageTotals, topSkills, topAgents] = await Promise.all([
       db.claudeSession.count({
         where: {
           projectId,
           startedAt: { gte: from, lte: to }
         }
       }),
-      db.usageRecord.aggregate({
-        where: {
-          projectId,
-          timestamp: { gte: from, lte: to }
-        },
-        _sum: {
-          inputTokens: true,
-          outputTokens: true,
-          cacheCreationTokens: true,
-          cacheReadTokens: true,
-          estimatedCostUsd: true
-        }
-      }),
-      db.usageRecord.groupBy({
-        by: ['userId'],
-        where: {
-          projectId,
-          timestamp: { gte: from, lte: to }
-        }
-      }).then(r => r.length),
+      db.$queryRaw<Array<{
+        inputTokens: bigint | null
+        outputTokens: bigint | null
+        cacheCreationTokens: bigint | null
+        cacheReadTokens: bigint | null
+        estimatedCostUsd: number | null
+        activeUserCount: bigint
+      }>>`
+        SELECT
+          SUM(input_tokens)::bigint                 AS "inputTokens",
+          SUM(output_tokens)::bigint                AS "outputTokens",
+          SUM(cache_creation_tokens)::bigint        AS "cacheCreationTokens",
+          SUM(cache_read_tokens)::bigint            AS "cacheReadTokens",
+          COALESCE(SUM(estimated_cost_usd), 0)      AS "estimatedCostUsd",
+          COUNT(DISTINCT user_id)::bigint           AS "activeUserCount"
+        FROM usage_records
+        WHERE project_id = ${projectId}
+          AND timestamp >= ${from}
+          AND timestamp <= ${to}
+      `,
       db.event.groupBy({
         by: ['skillName'],
         where: {
@@ -80,14 +80,15 @@ export async function GET(
       })
     ])
 
+    const totals = usageTotals[0]
     const summary: DashboardSummary = {
       sessionCount,
-      activeUserCount: activeUsers,
-      totalInputTokens: usageTotals._sum.inputTokens ?? 0,
-      totalOutputTokens: usageTotals._sum.outputTokens ?? 0,
-      totalCacheReadTokens: usageTotals._sum.cacheReadTokens ?? 0,
-      totalCacheCreationTokens: usageTotals._sum.cacheCreationTokens ?? 0,
-      estimatedCostUsd: usageTotals._sum.estimatedCostUsd ?? 0,
+      activeUserCount: Number(totals?.activeUserCount ?? 0),
+      totalInputTokens: Number(totals?.inputTokens ?? 0),
+      totalOutputTokens: Number(totals?.outputTokens ?? 0),
+      totalCacheReadTokens: Number(totals?.cacheReadTokens ?? 0),
+      totalCacheCreationTokens: Number(totals?.cacheCreationTokens ?? 0),
+      estimatedCostUsd: Number(totals?.estimatedCostUsd ?? 0),
       topSkills: topSkills.map(s => ({
         skillName: s.skillName!,
         callCount: s._count.id
