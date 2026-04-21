@@ -1,7 +1,21 @@
 import { MessageRole } from './events.js'
 
+/** 페이지네이션 응답 공통 형태 (offset 방식) */
+export interface PaginatedResult<T> {
+  items: T[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export interface ModelShare {
+  model: string
+  totalTokens: number
+}
+
 export interface DashboardSummary {
   sessionCount: number
+  turnCount: number
   activeUserCount: number
   totalInputTokens: number
   totalOutputTokens: number
@@ -10,6 +24,7 @@ export interface DashboardSummary {
   estimatedCostUsd: number
   topSkills: Array<{ skillName: string; callCount: number }>
   topAgents: Array<{ agentType: string; callCount: number }>
+  modelShare: ModelShare[]
 }
 
 export interface UsageSeries {
@@ -17,6 +32,7 @@ export interface UsageSeries {
   inputTokens: number
   outputTokens: number
   cacheReadTokens: number
+  cacheCreationTokens: number
   estimatedCostUsd: number
 }
 

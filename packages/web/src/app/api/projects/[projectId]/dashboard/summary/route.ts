@@ -27,11 +27,18 @@ export async function GET(
     const toQuery = req.nextUrl.searchParams.get('to') ?? undefined
     const { from, to } = parseDateRange(fromQuery, toQuery)
 
-    const [sessionCount, usageTotals, topSkills, topAgents] = await Promise.all([
+    const [sessionCount, turnCount, usageTotals, topSkills, topAgents, modelRows] = await Promise.all([
       db.claudeSession.count({
         where: {
           projectId,
           startedAt: { gte: from, lte: to }
+        }
+      }),
+      db.event.count({
+        where: {
+          projectId,
+          eventType: 'STOP',
+          timestamp: { gte: from, lte: to }
         }
       }),
       db.$queryRaw<Array<{
@@ -77,12 +84,27 @@ export async function GET(
         _count: { id: true },
         orderBy: { _count: { id: 'desc' } },
         take: 5
-      })
+      }),
+      db.$queryRaw<Array<{
+        model: string | null
+        totalTokens: bigint | null
+      }>>`
+        SELECT
+          model,
+          SUM(input_tokens + output_tokens)::bigint AS "totalTokens"
+        FROM usage_records
+        WHERE project_id = ${projectId}
+          AND timestamp >= ${from}
+          AND timestamp <= ${to}
+        GROUP BY model
+        ORDER BY "totalTokens" DESC NULLS LAST
+      `
     ])
 
     const totals = usageTotals[0]
     const summary: DashboardSummary = {
       sessionCount,
+      turnCount,
       activeUserCount: Number(totals?.activeUserCount ?? 0),
       totalInputTokens: Number(totals?.inputTokens ?? 0),
       totalOutputTokens: Number(totals?.outputTokens ?? 0),
@@ -96,7 +118,13 @@ export async function GET(
       topAgents: topAgents.map(a => ({
         agentType: a.agentType!,
         callCount: a._count.id
-      }))
+      })),
+      modelShare: modelRows
+        .filter(m => m.model && Number(m.totalTokens ?? 0) > 0)
+        .map(m => ({
+          model: m.model as string,
+          totalTokens: Number(m.totalTokens ?? 0),
+        }))
     }
 
     return NextResponse.json(summary)

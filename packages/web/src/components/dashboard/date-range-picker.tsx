@@ -6,9 +6,10 @@ import { Suspense } from 'react'
 import { cn } from '@/lib/utils'
 
 const PRESETS = [
-  { days: 7, label: '7일' },
-  { days: 30, label: '30일' },
-  { days: 90, label: '90일' },
+  { days: 7, label: '7d' },
+  { days: 30, label: '30d' },
+  { days: 90, label: '90d' },
+  { days: 3650, label: 'ALL' },
 ] as const
 
 function DateRangePickerContent() {
@@ -36,7 +37,9 @@ function DateRangePickerContent() {
         ? 30
         : daysDiff === 89
           ? 90
-          : null
+          : daysDiff >= 3649
+            ? 3650
+            : null
     : null
 
   const handlePreset = (days: number) => {
@@ -46,6 +49,8 @@ function DateRangePickerContent() {
     const newParams = new URLSearchParams(searchParams.toString())
     newParams.set('from', from)
     newParams.set('to', to)
+    // 페이지네이션 사용 중인 화면에서 날짜가 바뀌면 첫 페이지로 리셋
+    newParams.delete('page')
 
     router.push(`?${newParams.toString()}`)
   }

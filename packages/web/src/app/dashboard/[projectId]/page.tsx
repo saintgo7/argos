@@ -2,18 +2,35 @@
 
 import { use, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { subDays, format } from 'date-fns'
-import { MetricBar, MetricCard } from '@/components/dashboard/metric-card'
+import { subDays, format, differenceInDays } from 'date-fns'
 import { ChartCard } from '@/components/dashboard/chart-card'
-import { StatList, StatListRow } from '@/components/dashboard/stat-list'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
-import { TokenUsageChart } from '@/components/dashboard/token-usage-chart'
+import { OverviewStats } from '@/components/dashboard/overview-stats'
+import { DailyWorkChart } from '@/components/dashboard/daily-work-chart'
+import { DailyCacheReadsChart } from '@/components/dashboard/daily-cache-reads-chart'
+import { SkillFrequencyChart } from '@/components/dashboard/skill-frequency-chart'
+import { ModelShareChart } from '@/components/dashboard/model-share-chart'
+import { TopUsersList } from '@/components/dashboard/top-users-list'
+import { RecentSessionsList } from '@/components/dashboard/recent-sessions-list'
 import { useDashboardSummary } from '@/hooks/use-dashboard-summary'
 import { useDashboardUsage } from '@/hooks/use-dashboard-usage'
-import { formatTokens, formatCost } from '@/lib/format'
+import { useDashboardUsers } from '@/hooks/use-dashboard-users'
+import { useDashboardSessions } from '@/hooks/use-dashboard-sessions'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+
+function periodLabel(from: Date, to: Date): string {
+  const today = new Date()
+  const todayKey = format(today, 'yyyy-MM-dd')
+  const toKey = format(to, 'yyyy-MM-dd')
+  if (toKey === todayKey) {
+    const days = differenceInDays(to, from) + 1
+    if (days >= 365 * 5) return 'all time'
+    return `last ${days} days`
+  }
+  return `${format(from, 'MMM d')} – ${format(to, 'MMM d')}`
+}
 
 function OverviewContent({ projectId }: { projectId: string }) {
   const searchParams = useSearchParams()
@@ -23,19 +40,38 @@ function OverviewContent({ projectId }: { projectId: string }) {
   const from = searchParams.get('from') || format(thirtyDaysAgo, 'yyyy-MM-dd')
   const to = searchParams.get('to') || format(today, 'yyyy-MM-dd')
 
-  const { data: summary, isLoading: summaryLoading, error: summaryError, refetch: refetchSummary } = useDashboardSummary(projectId, from, to)
-  const { data: usage, isLoading: usageLoading, error: usageError, refetch: refetchUsage } = useDashboardUsage(projectId, from, to)
+  const fromDate = new Date(from)
+  const toDate = new Date(to)
+
+  const { data: summary, isLoading: summaryLoading, error: summaryError, refetch: refetchSummary } =
+    useDashboardSummary(projectId, from, to)
+  const { data: usage, isLoading: usageLoading, error: usageError, refetch: refetchUsage } =
+    useDashboardUsage(projectId, from, to)
+
+  // Top 5 users by tokens, always last 7 days (independent of the main date range)
+  const sevenDaysAgo = format(subDays(today, 7), 'yyyy-MM-dd')
+  const todayStr = format(today, 'yyyy-MM-dd')
+  const { data: topUsersData, isLoading: usersLoading } =
+    useDashboardUsers(projectId, sevenDaysAgo, todayStr, 1, 10, 'tokens')
+
+  // 5 most recent sessions — scoped to selected date range
+  const { data: recentSessionsData, isLoading: sessionsLoading } =
+    useDashboardSessions(projectId, from, to, 1, 10)
 
   if (summaryLoading || usageLoading) {
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-8 w-32" />
-          <Skeleton className="h-8 w-72" />
+        <Skeleton className="h-40 w-full" />
+        <div className="grid md:grid-cols-2 gap-6">
+          <Skeleton className="h-80" />
+          <Skeleton className="h-80" />
+          <Skeleton className="h-80" />
+          <Skeleton className="h-80" />
         </div>
-        <Skeleton className="h-24" />
-        <Skeleton className="h-80" />
-        <Skeleton className="h-56" />
+        <div className="grid md:grid-cols-2 gap-6">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64" />
+        </div>
       </div>
     )
   }
@@ -63,7 +99,8 @@ function OverviewContent({ projectId }: { projectId: string }) {
     )
   }
 
-  const hasNoData = !summary || (summary.sessionCount === 0 && summary.activeUserCount === 0)
+  const hasNoData =
+    !summary || (summary.sessionCount === 0 && summary.activeUserCount === 0)
 
   if (hasNoData) {
     return (
@@ -72,7 +109,6 @@ function OverviewContent({ projectId }: { projectId: string }) {
           <h1 className="text-2xl font-semibold">Overview</h1>
           <DateRangePicker />
         </div>
-
         <div className="rounded-xl bg-card ring-1 ring-foreground/10 p-12 text-center">
           <h2 className="text-lg font-medium mb-2">
             아직 수집된 데이터가 없습니다
@@ -80,77 +116,84 @@ function OverviewContent({ projectId }: { projectId: string }) {
           <p className="text-sm text-muted-foreground mb-4">
             팀원들이 argos를 설정하고 Claude Code를 사용하면 여기에 데이터가 표시됩니다.
           </p>
-          <a
-            href="https://github.com/your-org/argos#setup"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-brand hover:underline inline-flex items-center gap-1 text-sm"
-          >
-            설정 방법 보기 →
-          </a>
         </div>
       </div>
     )
   }
 
-  const totalTokens = (summary?.totalInputTokens ?? 0) + (summary?.totalOutputTokens ?? 0)
-  const topSkills = summary?.topSkills?.slice(0, 5) ?? []
-  const maxSkillCalls = topSkills.reduce((m, s) => Math.max(m, s.callCount), 0)
+  const series = usage?.series ?? []
+  const topSkills = summary?.topSkills ?? []
+  const modelShare = summary?.modelShare ?? []
+  const topUsers = (topUsersData?.items ?? []).slice(0, 5)
+  const recentSessions = (recentSessionsData?.items ?? []).slice(0, 5)
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <h1 className="text-2xl font-semibold">Overview</h1>
-        <DateRangePicker />
+      <OverviewStats
+        periodLabel={periodLabel(fromDate, toDate)}
+        sessions={summary?.sessionCount ?? 0}
+        turns={summary?.turnCount ?? 0}
+        inputTokens={summary?.totalInputTokens ?? 0}
+        outputTokens={summary?.totalOutputTokens ?? 0}
+        cacheReadTokens={summary?.totalCacheReadTokens ?? 0}
+        cacheCreationTokens={summary?.totalCacheCreationTokens ?? 0}
+        estimatedCostUsd={summary?.estimatedCostUsd ?? 0}
+        rangeSelector={<DateRangePicker />}
+      />
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <ChartCard
+          title="Your daily work"
+          description="Tokens you paid for: input, output, 그리고 재사용을 위해 저장된 cache create."
+        >
+          <DailyWorkChart data={series} />
+        </ChartCard>
+
+        <ChartCard
+          title="Daily cache reads"
+          description="Cache reads는 Claude가 이미 본 것(CLAUDE.md 등)을 재사용하는 저렴한 토큰입니다. 일반 input 대비 약 ~10× 저렴하므로 높은 값이 좋은 신호입니다."
+        >
+          <DailyCacheReadsChart data={series} />
+        </ChartCard>
+
+        <ChartCard
+          title="Skill별 호출 빈도"
+          description="가장 많이 호출된 스킬 Top 10"
+        >
+          <SkillFrequencyChart data={topSkills} />
+        </ChartCard>
+
+        <ChartCard
+          title="Token usage by model"
+          description="Claude 모델별 billable 토큰 점유율."
+        >
+          <ModelShareChart data={modelShare} />
+        </ChartCard>
       </div>
 
-      <MetricBar>
-        <MetricCard
-          label="Total Sessions"
-          value={(summary?.sessionCount ?? 0).toLocaleString()}
-          indicator={<span className="h-2 w-2 rounded-sm bg-brand" />}
-        />
-        <MetricCard
-          label="Active Users"
-          value={(summary?.activeUserCount ?? 0).toLocaleString()}
-          indicator={<span className="h-2 w-2 rounded-sm bg-brand-2" />}
-        />
-        <MetricCard
-          label="Total Tokens"
-          value={formatTokens(totalTokens)}
-        />
-        <MetricCard
-          label="Estimated Cost"
-          value={formatCost(summary?.estimatedCostUsd ?? 0)}
-        />
-      </MetricBar>
+      <div className="grid md:grid-cols-2 gap-6">
+        <ChartCard
+          title="Top users"
+          description="최근 7일간 토큰 소모량 기준 Top 5"
+        >
+          {usersLoading ? (
+            <Skeleton className="h-40" />
+          ) : (
+            <TopUsersList users={topUsers} projectId={projectId} />
+          )}
+        </ChartCard>
 
-      <ChartCard
-        title="Token Usage Over Time"
-        description="Input / output 토큰 사용량 추이"
-      >
-        <TokenUsageChart data={usage?.series ?? []} />
-      </ChartCard>
-
-      <ChartCard title="Top Skills" description="가장 많이 호출된 스킬 5개">
-        {topSkills.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">
-            No skill data yet
-          </p>
-        ) : (
-          <StatList>
-            {topSkills.map((skill) => (
-              <StatListRow
-                key={skill.skillName}
-                label={skill.skillName}
-                value={skill.callCount.toLocaleString()}
-                percent={maxSkillCalls > 0 ? (skill.callCount / maxSkillCalls) * 100 : 0}
-                tone="brand"
-              />
-            ))}
-          </StatList>
-        )}
-      </ChartCard>
+        <ChartCard
+          title="Recent sessions"
+          description="최근 발생한 세션 5개"
+        >
+          {sessionsLoading ? (
+            <Skeleton className="h-40" />
+          ) : (
+            <RecentSessionsList sessions={recentSessions} projectId={projectId} />
+          )}
+        </ChartCard>
+      </div>
     </div>
   )
 }

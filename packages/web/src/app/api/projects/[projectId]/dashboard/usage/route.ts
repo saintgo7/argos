@@ -32,13 +32,15 @@ export async function GET(
       inputTokens: number
       outputTokens: number
       cacheReadTokens: number
+      cacheCreationTokens: number
       estimatedCostUsd: number
     }>>`
       SELECT
         DATE_TRUNC('day', timestamp)::date AS date,
-        SUM(input_tokens)::int            AS "inputTokens",
-        SUM(output_tokens)::int           AS "outputTokens",
-        SUM(cache_read_tokens)::int       AS "cacheReadTokens",
+        SUM(input_tokens)::int             AS "inputTokens",
+        SUM(output_tokens)::int            AS "outputTokens",
+        SUM(cache_read_tokens)::int        AS "cacheReadTokens",
+        SUM(cache_creation_tokens)::int    AS "cacheCreationTokens",
         COALESCE(SUM(estimated_cost_usd), 0) AS "estimatedCostUsd"
       FROM usage_records
       WHERE project_id = ${projectId}
@@ -53,6 +55,7 @@ export async function GET(
       inputTokens: s.inputTokens,
       outputTokens: s.outputTokens,
       cacheReadTokens: s.cacheReadTokens,
+      cacheCreationTokens: s.cacheCreationTokens,
       estimatedCostUsd: Number(s.estimatedCostUsd)
     }))
 
