@@ -30,13 +30,13 @@ export async function GET(
     const skills = await db.$queryRaw<Array<{
       skill_name: string
       call_count: bigint
-      slash_command_count: bigint
+      session_count: bigint
       last_used_at: Date
     }>>`
       SELECT
         skill_name,
         COUNT(*) AS call_count,
-        COUNT(CASE WHEN is_slash_command THEN 1 END) AS slash_command_count,
+        COUNT(DISTINCT session_id) AS session_count,
         MAX(timestamp) AS last_used_at
       FROM events
       WHERE project_id = ${projectId}
@@ -52,7 +52,7 @@ export async function GET(
     const skillStats: SkillStat[] = skills.map(s => ({
       skillName: s.skill_name,
       callCount: Number(s.call_count),
-      slashCommandCount: Number(s.slash_command_count),
+      sessionCount: Number(s.session_count),
       lastUsedAt: s.last_used_at.toISOString()
     }))
 

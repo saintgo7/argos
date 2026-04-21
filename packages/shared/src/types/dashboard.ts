@@ -51,7 +51,7 @@ export interface UserStat {
 export interface SkillStat {
   skillName: string
   callCount: number
-  slashCommandCount: number
+  sessionCount: number
   lastUsedAt: string
 }
 

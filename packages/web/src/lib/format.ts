@@ -1,4 +1,5 @@
 import { format as dateFnsFormat, formatDistanceToNow } from 'date-fns'
+import { ko } from 'date-fns/locale'
 
 export function formatTokens(n: number): string {
   if (n >= 1_000_000) {
@@ -60,7 +61,7 @@ export function formatRelativeTime(timestamp: string, baseTimestamp: string): st
 export function formatRelativeTime(timestamp: string, baseTimestamp?: string): string {
   if (baseTimestamp === undefined) {
     try {
-      return formatDistanceToNow(new Date(timestamp), { addSuffix: true })
+      return formatDistanceToNow(new Date(timestamp), { addSuffix: true, locale: ko })
     } catch {
       return timestamp
     }

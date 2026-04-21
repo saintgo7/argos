@@ -1,19 +1,11 @@
 'use client'
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, TooltipProps, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, TooltipProps } from 'recharts'
 import type { SkillStat } from '@argos/shared'
 
 interface SkillBarChartProps {
   data: SkillStat[]
 }
-
-const CHART_VARS = [
-  'var(--color-chart-1)',
-  'var(--color-chart-2)',
-  'var(--color-chart-3)',
-  'var(--color-chart-4)',
-  'var(--color-chart-5)',
-]
 
 function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
   if (!active || !payload || payload.length === 0) return null
@@ -65,11 +57,7 @@ export function SkillBarChart({ data }: SkillBarChartProps) {
           style={{ fontSize: '11px' }}
         />
         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-muted)', opacity: 0.4 }} />
-        <Bar dataKey="calls" name="Calls" radius={[0, 4, 4, 0]}>
-          {chartData.map((_, index) => (
-            <Cell key={`cell-${index}`} fill={CHART_VARS[index % CHART_VARS.length]} />
-          ))}
-        </Bar>
+        <Bar dataKey="calls" name="Calls" radius={[0, 4, 4, 0]} fill="var(--color-chart-1)" />
       </BarChart>
     </ResponsiveContainer>
   )
