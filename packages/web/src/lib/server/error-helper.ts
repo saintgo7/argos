@@ -10,13 +10,18 @@ import { ZodError } from 'zod'
 export function handleRouteError(err: unknown): NextResponse {
   console.error('Error:', err)
 
-  if (err instanceof ZodError) {
+  // instanceof는 @argos/shared와 web이 번들에서 서로 다른 zod 인스턴스를 참조할 때 실패 — name 기반 duck-typing으로 보강
+  const isZodError =
+    err instanceof ZodError ||
+    (typeof err === 'object' && err !== null && (err as { name?: string }).name === 'ZodError')
+
+  if (isZodError) {
     return NextResponse.json(
       {
         error: {
           code: 'VALIDATION_ERROR',
           message: 'Validation error',
-          details: err.errors,
+          details: (err as ZodError).errors,
         },
       },
       { status: 400 }
