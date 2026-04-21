@@ -196,7 +196,7 @@ export default function SessionDetailPage({
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-[minmax(320px,2fr)_3fr] h-[calc(100vh-360px)] min-h-[500px]">
-              <div className="border-r border-border">
+              <div className="border-r border-border min-h-0 overflow-hidden">
                 <EventList
                   events={events}
                   selectedIdx={safeIdx ?? -1}
