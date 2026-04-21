@@ -55,6 +55,8 @@ export interface SessionItem {
   outputTokens: number
   estimatedCostUsd: number
   eventCount: number
+  /** 저장된 session.title, 없으면 첫 HUMAN 메시지로 fallback (200자 truncation). 완전히 비어있으면 null */
+  title: string | null
 }
 
 /** 세션 타임라인 차트용 — UsageRecord 1건에 대응 */
@@ -85,6 +87,8 @@ export interface SessionDetailMessage {
 }
 
 export interface SessionDetail extends SessionItem {
+  /** 저장된 session.summary (transcript "summary" 라인). 없으면 null */
+  summary: string | null
   messages: SessionDetailMessage[]
   usageTimeline: SessionTimelineUsage[]
 }

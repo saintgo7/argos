@@ -25,6 +25,9 @@ interface TranscriptLine {
   }
   content?: string
   timestamp?: string
+  // type === 'summary' entries (Claude Code writes these on /compact or session resume)
+  summary?: string
+  leafUuid?: string
 }
 
 /**
@@ -125,6 +128,23 @@ export async function extractUsagePerTurn(
   }
 
   return results
+}
+
+/**
+ * Extract session summary from transcript.
+ * Claude Code writes `{"type":"summary","summary":"…"}` lines after /compact or on session
+ * resume. When multiple summary lines exist, the last one wins (most recent compaction).
+ * Returns null when no summary line is present (typical for short, non-compacted sessions).
+ */
+export async function extractSummary(transcriptPath: string): Promise<string | null> {
+  const lines = await readTranscriptLines(transcriptPath)
+  let last: string | null = null
+  for (const line of lines) {
+    if (line.type === 'summary' && typeof line.summary === 'string' && line.summary.length > 0) {
+      last = line.summary
+    }
+  }
+  return last
 }
 
 /**

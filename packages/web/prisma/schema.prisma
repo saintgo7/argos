@@ -127,6 +127,10 @@ model ClaudeSession {
   transcriptPath String?   @map("transcript_path")
   startedAt      DateTime  @default(now()) @map("started_at")
   endedAt        DateTime? @map("ended_at")
+  // transcript.jsonl의 type="summary" 라인에서 추출 (주로 /compact 또는 resume 시 존재)
+  // 없으면 응답 조립 단계에서 첫 HUMAN 메시지를 fallback title로 사용
+  title          String?
+  summary        String?
 
   project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)

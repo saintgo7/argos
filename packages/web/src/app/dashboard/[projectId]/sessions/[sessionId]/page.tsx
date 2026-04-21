@@ -6,8 +6,13 @@ import { EventList } from '@/components/dashboard/event-list'
 import { EventDetail } from '@/components/dashboard/event-detail'
 import { SessionTimelineChart } from '@/components/dashboard/session-timeline-chart'
 import { SessionActivityRibbon } from '@/components/dashboard/session-activity-ribbon'
+import {
+  SessionFilesSummary,
+  SessionFilesTab,
+} from '@/components/dashboard/session-files'
 import { useSessionDetail } from '@/hooks/use-dashboard-sessions'
 import { messagesToTimeline } from '@/lib/timeline-events'
+import { extractSessionFiles } from '@/lib/session-files'
 import {
   formatTokens,
   formatCost,
@@ -39,13 +44,19 @@ export default function SessionDetailPage({
     () => (data ? messagesToTimeline(data.messages) : []),
     [data],
   )
+  const files = useMemo(() => extractSessionFiles(events), [events])
   const [selectedIdx, setSelectedIdx] = useState<number | null>(0)
   const safeIdx =
     selectedIdx === null
       ? null
       : Math.min(selectedIdx, Math.max(0, events.length - 1))
   const selectedEvent = safeIdx !== null ? events[safeIdx] ?? null : null
-  const [tab, setTab] = useState<'transcript' | 'debug'>('transcript')
+  const [tab, setTab] = useState<'transcript' | 'files' | 'debug'>('transcript')
+
+  const jumpToEvent = (idx: number) => {
+    setSelectedIdx(idx)
+    setTab('transcript')
+  }
 
   if (isLoading) {
     return (
@@ -106,51 +117,73 @@ export default function SessionDetailPage({
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.back()}
-            className="px-2"
-          >
-            ←
-          </Button>
-          <h1 className="text-lg font-semibold">Session {truncatedId}</h1>
+      <header className="space-y-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-start gap-3 min-w-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.back()}
+              className="px-2 shrink-0"
+            >
+              ←
+            </Button>
+            <div className="min-w-0">
+              <h1 className="text-lg font-semibold truncate">
+                {data.title ?? <span className="text-gray-400">Session {truncatedId}</span>}
+              </h1>
+              {data.title && (
+                <p className="text-xs text-gray-400 font-mono">Session {truncatedId}</p>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 shrink-0">
+            <span>{duration}</span>
+            {!data.endedAt && (
+              <>
+                <span>·</span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-green-700">
+                  Live
+                </span>
+              </>
+            )}
+            <span>·</span>
+            <span>{relative}</span>
+            <span>·</span>
+            <span>{data.eventCount} events</span>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
-          <span>{duration}</span>
-          {!data.endedAt && (
-            <>
-              <span>·</span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-green-700">
-                Live
-              </span>
-            </>
-          )}
-          <span>·</span>
-          <span>{relative}</span>
-          <span>·</span>
-          <span>{data.eventCount} events</span>
-        </div>
+        {data.summary && (
+          <p className="text-sm text-gray-600 whitespace-pre-wrap">{data.summary}</p>
+        )}
       </header>
 
-      <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-gray-500">
-        <span>{data.userName}</span>
-        <span>·</span>
-        <span>In {formatTokens(data.inputTokens)}</span>
-        <span>·</span>
-        <span>Out {formatTokens(data.outputTokens)}</span>
-        <span>·</span>
-        <span>{formatCost(data.estimatedCostUsd)}</span>
-        <span>·</span>
-        <span>Started {formatDate(data.startedAt)}</span>
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-gray-500">
+          <span>{data.userName}</span>
+          <span>·</span>
+          <span>In {formatTokens(data.inputTokens)}</span>
+          <span>·</span>
+          <span>Out {formatTokens(data.outputTokens)}</span>
+          <span>·</span>
+          <span>{formatCost(data.estimatedCostUsd)}</span>
+          <span>·</span>
+          <span>Started {formatDate(data.startedAt)}</span>
+        </div>
+        <SessionFilesSummary
+          files={files}
+          onOpenFilesTab={() => setTab('files')}
+        />
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <Tabs value={tab} onChange={(v) => setTab(v as 'transcript' | 'debug')}>
+        <Tabs
+          value={tab}
+          onChange={(v) => setTab(v as 'transcript' | 'files' | 'debug')}
+        >
           <TabsList className="px-4">
             <TabsTrigger value="transcript">Transcript</TabsTrigger>
+            <TabsTrigger value="files">Files</TabsTrigger>
             <TabsTrigger value="debug">Debug</TabsTrigger>
           </TabsList>
           <TabsContent value="transcript">
@@ -177,6 +210,11 @@ export default function SessionDetailPage({
                   onClose={() => setSelectedIdx(null)}
                 />
               </div>
+            </div>
+          </TabsContent>
+          <TabsContent value="files">
+            <div className="max-h-[calc(100vh-360px)] overflow-auto">
+              <SessionFilesTab files={files} onJump={jumpToEvent} />
             </div>
           </TabsContent>
           <TabsContent value="debug">

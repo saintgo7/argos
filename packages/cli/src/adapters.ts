@@ -6,7 +6,7 @@ import { runLoginFlow } from './lib/auth-flow.js'
 import { apiRequest } from './lib/api-client.js'
 import { injectHooks } from './lib/hooks-inject.js'
 import { sendEventBackground } from './lib/event-sender.js'
-import { extractUsageFromTranscript, extractUsagePerTurn, detectSlashCommand, extractMessages } from './lib/transcript.js'
+import { extractUsageFromTranscript, extractUsagePerTurn, detectSlashCommand, extractMessages, extractSummary } from './lib/transcript.js'
 import type { ExternalDeps } from './deps.js'
 import type { CreateProjectResponse } from '@argos/shared'
 
@@ -68,6 +68,7 @@ export const realDeps: ExternalDeps = {
     extractUsagePerTurn: extractUsagePerTurn,
     detectSlashCommand: detectSlashCommand,
     extractMessages: extractMessages,
+    extractSummary: extractSummary,
   },
   events: {
     sendBackground: sendEventBackground,

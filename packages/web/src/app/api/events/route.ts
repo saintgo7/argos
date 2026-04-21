@@ -118,6 +118,19 @@ export async function POST(req: Request) {
     if (eventType === 'STOP' || eventType === 'SUBAGENT_STOP') {
       after(async () => {
         try {
+          // Main Stop: 세션 종료 메타 업데이트 (endedAt, title, summary)
+          // SubagentStop은 CLI에서 이미 필터링되지만 방어적으로 STOP만 처리
+          if (eventType === 'STOP') {
+            await db.claudeSession.update({
+              where: { id: payload.sessionId },
+              data: {
+                endedAt: new Date(),
+                ...(payload.title !== undefined ? { title: payload.title } : {}),
+                ...(payload.summary !== undefined ? { summary: payload.summary } : {}),
+              },
+            })
+          }
+
           // usagePerTurn이 있으면 per-turn bulk insert (신규)
           if (payload.usagePerTurn && payload.usagePerTurn.length > 0) {
             await db.usageRecord.createMany({

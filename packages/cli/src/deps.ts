@@ -33,6 +33,7 @@ export interface ExternalDeps {
     extractUsagePerTurn(path: string): Promise<UsagePerTurnPayload[]>
     detectSlashCommand(path: string): Promise<string | null>
     extractMessages(path: string): Promise<MessagePayload[]>
+    extractSummary(path: string): Promise<string | null>
   }
   events: {
     sendBackground(url: string, token: string, payload: IngestEventPayload): void

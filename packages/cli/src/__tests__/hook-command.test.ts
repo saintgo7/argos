@@ -134,6 +134,7 @@ function makeMockDeps(overrides: Partial<ExternalDeps> = {}): ExternalDeps {
   const extractUsage = vi.fn().mockResolvedValue(null)
   const detectSlashCommand = vi.fn().mockResolvedValue(null)
   const extractMessages = vi.fn().mockResolvedValue([])
+  const extractSummary = vi.fn().mockResolvedValue(null)
 
   return {
     config: {
@@ -165,6 +166,7 @@ function makeMockDeps(overrides: Partial<ExternalDeps> = {}): ExternalDeps {
       extractUsage,
       detectSlashCommand,
       extractMessages,
+      extractSummary,
     },
     events: {
       sendBackground,

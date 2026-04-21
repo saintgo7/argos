@@ -39,6 +39,17 @@ export function formatDateTime(s: string): string {
   }
 }
 
+// 2026-04-13 16:29:29 형태
+export function formatDateTimeFull(s: string): string {
+  try {
+    const date = new Date(s)
+    if (Number.isNaN(date.getTime())) return s
+    return dateFnsFormat(date, 'yyyy-MM-dd HH:mm:ss')
+  } catch {
+    return s
+  }
+}
+
 /**
  * Format a timestamp as relative time.
  * - With `baseTimestamp`: offset from base (e.g. "+3m", "+1h 5m").

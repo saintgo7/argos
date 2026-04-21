@@ -42,4 +42,7 @@ export interface IngestEventPayload {
   usage?: UsagePayload               // 기존 — 전체 합산 (하위호환)
   usagePerTurn?: UsagePerTurnPayload[] // 신규 — assistant 턴별 개별 usage
   messages?: MessagePayload[]
+  // Stop에서 transcript의 type="summary" 라인으로부터 추출 (없으면 undefined)
+  title?: string    // 500자 이내
+  summary?: string  // 10,000자 이내
 }

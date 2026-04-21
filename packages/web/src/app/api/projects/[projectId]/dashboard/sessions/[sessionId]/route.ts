@@ -79,6 +79,11 @@ export async function GET(
       }
     }
 
+    const firstHuman = session.messages.find((m) => m.role === 'HUMAN')
+    const fallbackTitle = firstHuman?.content.slice(0, 200).trim() || null
+    const title = session.title?.trim() || fallbackTitle
+    const summary = session.summary?.trim() || null
+
     const detail: SessionDetail = {
       id: session.id,
       userId: session.user.id,
@@ -89,6 +94,8 @@ export async function GET(
       outputTokens: totalOutput,
       estimatedCostUsd: totalCost,
       eventCount: session._count.events,
+      title,
+      summary,
       messages: session.messages.map((m, i) => ({
         role: m.role,
         content: m.content,

@@ -208,6 +208,19 @@ export const makeHookCommand: CommandFactory =
           if (messages.length > 0) {
             payload.messages = messages
           }
+
+          // Main session only: pick up transcript "summary" line (present after /compact or on resume)
+          if (event.hook_event_name === 'Stop') {
+            try {
+              const summary = await deps.transcript.extractSummary(transcriptPath)
+              if (summary) {
+                payload.summary = summary.slice(0, 10000)
+                payload.title = summary.slice(0, 500)
+              }
+            } catch {
+              // Summary is optional — ignore parse errors
+            }
+          }
         }
       }
 

@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { subDays, format } from 'date-fns'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
 import { useDashboardSessions } from '@/hooks/use-dashboard-sessions'
-import { formatTokens, formatCost, formatDate } from '@/lib/format'
+import { formatTokens, formatCost, formatDateTimeFull } from '@/lib/format'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -89,13 +89,12 @@ function SessionsContent({ projectId }: { projectId: string }) {
         <table className="w-full">
           <thead className="bg-gray-50 border-b">
             <tr>
-              <th className="text-left py-3 px-4 font-medium whitespace-nowrap">User</th>
-              <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Started</th>
-              <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Ended</th>
-              <th className="text-right py-3 px-4 font-medium whitespace-nowrap">Input</th>
-              <th className="text-right py-3 px-4 font-medium whitespace-nowrap">Output</th>
-              <th className="text-right py-3 px-4 font-medium whitespace-nowrap">Cost</th>
-              <th className="text-right py-3 px-4 font-medium whitespace-nowrap">Events</th>
+              <th className="text-left py-3 px-4 font-medium whitespace-nowrap">사용자</th>
+              <th className="text-left py-3 px-4 font-medium">제목</th>
+              <th className="text-right py-3 px-4 font-medium whitespace-nowrap">입력토큰</th>
+              <th className="text-right py-3 px-4 font-medium whitespace-nowrap">출력토큰</th>
+              <th className="text-right py-3 px-4 font-medium whitespace-nowrap">비용</th>
+              <th className="text-left py-3 px-4 font-medium whitespace-nowrap">시간</th>
             </tr>
           </thead>
           <tbody>
@@ -105,15 +104,18 @@ function SessionsContent({ projectId }: { projectId: string }) {
                 onClick={() => handleRowClick(session.id)}
                 className="border-b hover:bg-gray-50 cursor-pointer transition-colors"
               >
-                <td className="py-3 px-4">{session.userName}</td>
-                <td className="py-3 px-4">{formatDate(session.startedAt)}</td>
-                <td className="py-3 px-4">
-                  {session.endedAt ? formatDate(session.endedAt) : '—'}
+                <td className="py-3 px-4 whitespace-nowrap">{session.userName}</td>
+                <td className="py-3 px-4 max-w-md">
+                  <div className="truncate text-gray-900">
+                    {session.title ?? <span className="text-gray-400">—</span>}
+                  </div>
                 </td>
-                <td className="text-right py-3 px-4">{formatTokens(session.inputTokens)}</td>
-                <td className="text-right py-3 px-4">{formatTokens(session.outputTokens)}</td>
-                <td className="text-right py-3 px-4">{formatCost(session.estimatedCostUsd)}</td>
-                <td className="text-right py-3 px-4">{session.eventCount}</td>
+                <td className="text-right py-3 px-4 whitespace-nowrap">{formatTokens(session.inputTokens)}</td>
+                <td className="text-right py-3 px-4 whitespace-nowrap">{formatTokens(session.outputTokens)}</td>
+                <td className="text-right py-3 px-4 whitespace-nowrap">{formatCost(session.estimatedCostUsd)}</td>
+                <td className="py-3 px-4 whitespace-nowrap tabular-nums text-gray-600">
+                  {formatDateTimeFull(session.startedAt)}
+                </td>
               </tr>
             ))}
           </tbody>

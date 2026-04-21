@@ -37,6 +37,13 @@ export async function GET(
         usageRecords: {
           select: { inputTokens: true, outputTokens: true, estimatedCostUsd: true }
         },
+        // Title fallback — 저장된 title이 없는 세션용으로 첫 HUMAN 메시지 1건만 로딩
+        messages: {
+          where: { role: 'HUMAN' },
+          orderBy: [{ timestamp: 'asc' }, { sequence: 'asc' }],
+          take: 1,
+          select: { content: true }
+        },
         _count: { select: { events: true } }
       },
       orderBy: { startedAt: 'desc' },
@@ -47,6 +54,8 @@ export async function GET(
       const totalInput = s.usageRecords.reduce((sum, r) => sum + r.inputTokens, 0)
       const totalOutput = s.usageRecords.reduce((sum, r) => sum + r.outputTokens, 0)
       const totalCost = s.usageRecords.reduce((sum, r) => sum + (r.estimatedCostUsd ?? 0), 0)
+      const fallbackTitle = s.messages[0]?.content.slice(0, 200).trim() || null
+      const title = s.title?.trim() || fallbackTitle
 
       return {
         id: s.id,
@@ -57,7 +66,8 @@ export async function GET(
         inputTokens: totalInput,
         outputTokens: totalOutput,
         estimatedCostUsd: totalCost,
-        eventCount: s._count.events
+        eventCount: s._count.events,
+        title,
       }
     })
 

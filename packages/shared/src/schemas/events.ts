@@ -40,4 +40,6 @@ export const IngestEventSchema = z.object({
   usage: UsagePayloadSchema.optional(),
   usagePerTurn: z.array(UsagePerTurnPayloadSchema).optional(),
   messages: z.array(MessagePayloadSchema).optional(),
+  title: z.string().max(500).optional(),
+  summary: z.string().max(10000).optional(),
 })
