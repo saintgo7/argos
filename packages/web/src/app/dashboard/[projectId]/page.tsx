@@ -3,7 +3,9 @@
 import { use, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { subDays, format } from 'date-fns'
-import { StatCard } from '@/components/dashboard/stat-card'
+import { MetricBar, MetricCard } from '@/components/dashboard/metric-card'
+import { ChartCard } from '@/components/dashboard/chart-card'
+import { StatList, StatListRow } from '@/components/dashboard/stat-list'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
 import { TokenUsageChart } from '@/components/dashboard/token-usage-chart'
 import { useDashboardSummary } from '@/hooks/use-dashboard-summary'
@@ -29,26 +31,11 @@ function OverviewContent({ projectId }: { projectId: string }) {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <Skeleton className="h-8 w-32" />
-          <Skeleton className="h-10 w-96" />
+          <Skeleton className="h-8 w-72" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <Skeleton className="h-6 w-48 mb-4" />
-          <Skeleton className="h-80" />
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <Skeleton className="h-6 w-32 mb-4" />
-          <div className="space-y-3">
-            <Skeleton className="h-10" />
-            <Skeleton className="h-10" />
-            <Skeleton className="h-10" />
-          </div>
-        </div>
+        <Skeleton className="h-24" />
+        <Skeleton className="h-80" />
+        <Skeleton className="h-56" />
       </div>
     )
   }
@@ -56,7 +43,7 @@ function OverviewContent({ projectId }: { projectId: string }) {
   if (summaryError || usageError) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Overview</h1>
+        <h1 className="text-2xl font-semibold">Overview</h1>
         <Alert variant="destructive">
           <AlertDescription className="flex items-center justify-between">
             <span>데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.</span>
@@ -82,22 +69,22 @@ function OverviewContent({ projectId }: { projectId: string }) {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Overview</h1>
+          <h1 className="text-2xl font-semibold">Overview</h1>
           <DateRangePicker />
         </div>
 
-        <div className="bg-white p-12 rounded-lg shadow text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        <div className="rounded-xl bg-card ring-1 ring-foreground/10 p-12 text-center">
+          <h2 className="text-lg font-medium mb-2">
             아직 수집된 데이터가 없습니다
           </h2>
-          <p className="text-gray-600 mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             팀원들이 argos를 설정하고 Claude Code를 사용하면 여기에 데이터가 표시됩니다.
           </p>
           <a
             href="https://github.com/your-org/argos#setup"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 hover:underline inline-flex items-center gap-1"
+            className="text-brand hover:underline inline-flex items-center gap-1 text-sm"
           >
             설정 방법 보기 →
           </a>
@@ -106,63 +93,64 @@ function OverviewContent({ projectId }: { projectId: string }) {
     )
   }
 
+  const totalTokens = (summary?.totalInputTokens ?? 0) + (summary?.totalOutputTokens ?? 0)
+  const topSkills = summary?.topSkills?.slice(0, 5) ?? []
+  const maxSkillCalls = topSkills.reduce((m, s) => Math.max(m, s.callCount), 0)
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <h1 className="text-2xl font-bold">Overview</h1>
+        <h1 className="text-2xl font-semibold">Overview</h1>
         <DateRangePicker />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Sessions"
-          value={summary?.sessionCount ?? 0}
+      <MetricBar>
+        <MetricCard
+          label="Total Sessions"
+          value={(summary?.sessionCount ?? 0).toLocaleString()}
+          indicator={<span className="h-2 w-2 rounded-sm bg-brand" />}
         />
-        <StatCard
-          title="Active Users"
-          value={summary?.activeUserCount ?? 0}
+        <MetricCard
+          label="Active Users"
+          value={(summary?.activeUserCount ?? 0).toLocaleString()}
+          indicator={<span className="h-2 w-2 rounded-sm bg-brand-2" />}
         />
-        <StatCard
-          title="Total Tokens"
-          value={formatTokens((summary?.totalInputTokens ?? 0) + (summary?.totalOutputTokens ?? 0))}
+        <MetricCard
+          label="Total Tokens"
+          value={formatTokens(totalTokens)}
         />
-        <StatCard
-          title="Estimated Cost"
+        <MetricCard
+          label="Estimated Cost"
           value={formatCost(summary?.estimatedCostUsd ?? 0)}
         />
-      </div>
+      </MetricBar>
 
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h2 className="text-lg font-semibold mb-4">Token Usage Over Time</h2>
+      <ChartCard
+        title="Token Usage Over Time"
+        description="Input / output 토큰 사용량 추이"
+      >
         <TokenUsageChart data={usage?.series ?? []} />
-      </div>
+      </ChartCard>
 
-      <div className="bg-white p-6 rounded-lg shadow overflow-x-auto">
-        <h2 className="text-lg font-semibold mb-4">Top Skills</h2>
-        <table className="w-full">
-          <thead>
-            <tr className="border-b">
-              <th className="text-left py-2">Skill Name</th>
-              <th className="text-right py-2">Call Count</th>
-            </tr>
-          </thead>
-          <tbody>
-            {summary?.topSkills.slice(0, 5).map((skill) => (
-              <tr key={skill.skillName} className="border-b hover:bg-gray-50">
-                <td className="py-2">{skill.skillName}</td>
-                <td className="text-right py-2">{skill.callCount}</td>
-              </tr>
+      <ChartCard title="Top Skills" description="가장 많이 호출된 스킬 5개">
+        {topSkills.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            No skill data yet
+          </p>
+        ) : (
+          <StatList>
+            {topSkills.map((skill) => (
+              <StatListRow
+                key={skill.skillName}
+                label={skill.skillName}
+                value={skill.callCount.toLocaleString()}
+                percent={maxSkillCalls > 0 ? (skill.callCount / maxSkillCalls) * 100 : 0}
+                tone="brand"
+              />
             ))}
-            {(!summary?.topSkills || summary.topSkills.length === 0) && (
-              <tr>
-                <td colSpan={2} className="py-4 text-center text-gray-500">
-                  No skill data yet
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          </StatList>
+        )}
+      </ChartCard>
     </div>
   )
 }

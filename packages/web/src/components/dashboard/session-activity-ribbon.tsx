@@ -16,13 +16,13 @@ function segmentVisuals(event: TimelineEvent): {
   style: CSSProperties
 } {
   if (event.kind === 'message' && event.role === 'HUMAN') {
-    return { bg: 'bg-purple-500', style: { flex: '0 0 3px' } }
+    return { bg: 'bg-brand', style: { flex: '0 0 3px' } }
   }
   if (event.kind === 'message' && event.role === 'ASSISTANT') {
     const grow = Math.max(event.outputTokens, 1)
-    return { bg: 'bg-blue-500', style: { flex: `${grow} 0 6px` } }
+    return { bg: 'bg-brand-2', style: { flex: `${grow} 0 6px` } }
   }
-  return { bg: 'bg-gray-400', style: { flex: '0 0 8px' } }
+  return { bg: 'bg-muted-foreground', style: { flex: '0 0 8px' } }
 }
 
 function TooltipBody({
@@ -42,10 +42,10 @@ function TooltipBody({
       .slice(0, 120)
     return (
       <>
-        <p className="font-medium text-gray-900">User</p>
-        <p className="text-xs text-gray-500 mb-2">{elapsed}</p>
+        <p className="font-medium">User</p>
+        <p className="text-xs text-muted-foreground mb-2">{elapsed}</p>
         {preview && (
-          <p className="text-xs text-gray-700 max-w-[280px] line-clamp-3">
+          <p className="text-xs text-foreground max-w-[280px] line-clamp-3">
             {preview}
           </p>
         )}
@@ -56,28 +56,28 @@ function TooltipBody({
   if (event.kind === 'message') {
     return (
       <>
-        <p className="font-medium text-gray-900">Agent</p>
-        <p className="text-xs text-gray-500 mb-2">{elapsed}</p>
+        <p className="font-medium">Agent</p>
+        <p className="text-xs text-muted-foreground mb-2">{elapsed}</p>
         <div className="space-y-1 text-xs">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-violet-500" />
-            <span className="text-gray-600">Input:</span>
-            <span className="font-medium">{formatTokens(event.inputTokens)}</span>
+            <span className="h-2 w-2 rounded-full bg-chart-1" />
+            <span className="text-muted-foreground">Input:</span>
+            <span className="font-medium tabular-nums">{formatTokens(event.inputTokens)}</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-blue-500" />
-            <span className="text-gray-600">Output:</span>
-            <span className="font-medium">{formatTokens(event.outputTokens)}</span>
+            <span className="h-2 w-2 rounded-full bg-chart-2" />
+            <span className="text-muted-foreground">Output:</span>
+            <span className="font-medium tabular-nums">{formatTokens(event.outputTokens)}</span>
           </div>
-          <div className="pt-1 mt-1 border-t border-gray-200">
-            <span className="text-gray-600">Cost:</span>
-            <span className="font-medium ml-2">
+          <div className="pt-1 mt-1 border-t border-border">
+            <span className="text-muted-foreground">Cost:</span>
+            <span className="font-medium ml-2 tabular-nums">
               {formatCost(event.estimatedCostUsd)}
             </span>
           </div>
           {event.model && (
             <div>
-              <span className="text-gray-600">Model:</span>
+              <span className="text-muted-foreground">Model:</span>
               <span className="font-medium ml-2">{event.model}</span>
             </div>
           )}
@@ -96,17 +96,17 @@ function TooltipBody({
       : event.toolName
   return (
     <>
-      <p className="font-medium text-gray-900">Tool</p>
-      <p className="text-xs text-gray-500 mb-2">{elapsed}</p>
+      <p className="font-medium">Tool</p>
+      <p className="text-xs text-muted-foreground mb-2">{elapsed}</p>
       <div className="space-y-1 text-xs">
         <div>
-          <span className="text-gray-600">Name:</span>
+          <span className="text-muted-foreground">Name:</span>
           <span className="font-medium ml-2">{label}</span>
         </div>
         {dur && (
           <div>
-            <span className="text-gray-600">Duration:</span>
-            <span className="font-medium ml-2">{dur}</span>
+            <span className="text-muted-foreground">Duration:</span>
+            <span className="font-medium ml-2 tabular-nums">{dur}</span>
           </div>
         )}
       </div>
@@ -135,7 +135,7 @@ export function SessionActivityRibbon({
 
   return (
     <div ref={containerRef} className="relative">
-      <div className="flex h-8 w-full gap-px overflow-hidden rounded bg-gray-100">
+      <div className="flex h-8 w-full gap-px overflow-hidden rounded-md bg-muted">
         {events.map((event, idx) => {
           const { bg, style } = segmentVisuals(event)
           const selected = idx === selectedIdx
@@ -151,7 +151,7 @@ export function SessionActivityRibbon({
               aria-label={`Event ${idx + 1}`}
               className={`h-full ${bg} transition-opacity ${
                 selected
-                  ? 'outline outline-2 outline-offset-[-2px] outline-purple-700'
+                  ? 'outline outline-2 outline-offset-[-2px] outline-foreground'
                   : 'hover:opacity-70'
               }`}
             />
@@ -160,7 +160,7 @@ export function SessionActivityRibbon({
       </div>
       {hover && hoveredEvent && (
         <div
-          className="pointer-events-none absolute z-10 bg-white border border-gray-200 rounded-lg shadow-lg p-3"
+          className="pointer-events-none absolute z-10 rounded-lg border border-border bg-popover text-popover-foreground shadow-lg p-3"
           style={{
             left: `${hover.x}px`,
             bottom: 'calc(100% + 6px)',

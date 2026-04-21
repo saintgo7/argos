@@ -87,12 +87,12 @@ function getSinglePreview(event: TimelineEvent): string {
 function getIcon(event: TimelineEvent) {
   if (event.kind === "message") {
     if (event.role === "HUMAN") {
-      return { Icon: User, bg: "bg-purple-500" };
+      return { Icon: User, bg: "bg-brand" };
     }
-    return { Icon: Bot, bg: "bg-blue-500" };
+    return { Icon: Bot, bg: "bg-brand-2" };
   }
   const isSpecial = event.isSkillCall || event.isAgentCall;
-  return { Icon: Wrench, bg: isSpecial ? "bg-amber-500" : "bg-gray-400" };
+  return { Icon: Wrench, bg: isSpecial ? "bg-chart-4" : "bg-muted-foreground" };
 }
 
 type RowProps = {
@@ -125,19 +125,19 @@ function Row({
         indented ? "pl-10 pr-3" : "px-3"
       } ${
         isSelected
-          ? "border-l-4 border-purple-500 bg-purple-50"
-          : "border-l-4 border-transparent hover:bg-gray-50"
+          ? "border-l-2 border-brand bg-brand-subtle"
+          : "border-l-2 border-transparent hover:bg-muted/50"
       }`}
     >
       <span
         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${bg}`}
       >
-        <Icon className="h-3 w-3 text-white" />
+        <Icon className="h-3 w-3 text-background" />
       </span>
       <span className="w-20 shrink-0 text-sm font-medium truncate">
         {label}
       </span>
-      <span className="flex-1 min-w-0 flex items-center gap-1 text-sm text-gray-600">
+      <span className="flex-1 min-w-0 flex items-center gap-1 text-sm text-muted-foreground">
         {chevron !== undefined && (
           <ChevronRight
             className={`h-3 w-3 shrink-0 transition-transform ${
@@ -147,7 +147,7 @@ function Row({
         )}
         <span className="truncate">{preview}</span>
       </span>
-      <span className="shrink-0 text-xs text-gray-400 tabular-nums">
+      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
         {time}
       </span>
     </button>
@@ -164,7 +164,7 @@ export function EventList({
 
   if (events.length === 0) {
     return (
-      <div className="p-6 text-center text-sm text-gray-500">
+      <div className="p-6 text-center text-sm text-muted-foreground">
         No events recorded
       </div>
     );
@@ -182,7 +182,7 @@ export function EventList({
   };
 
   return (
-    <ul className="divide-y divide-gray-100">
+    <ul className="divide-y divide-border">
       {groups.map((group) => {
         if (group.kind === "single") {
           const { event, idx } = group;

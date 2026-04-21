@@ -18,10 +18,10 @@ export function SessionFilesSummary({ files, onOpenFilesTab }: FilesSummaryProps
         <button
           type="button"
           onClick={onOpenFilesTab}
-          className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700 hover:bg-emerald-100 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-full bg-success/15 px-2.5 py-1 text-success hover:bg-success/25 transition-colors"
         >
           <Pencil className="h-3 w-3" />
-          <span className="font-medium">{modifiedCount}</span>
+          <span className="font-medium tabular-nums">{modifiedCount}</span>
           <span>{modifiedCount === 1 ? 'file modified' : 'files modified'}</span>
         </button>
       )}
@@ -29,10 +29,10 @@ export function SessionFilesSummary({ files, onOpenFilesTab }: FilesSummaryProps
         <button
           type="button"
           onClick={onOpenFilesTab}
-          className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-gray-600 hover:bg-gray-200 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-muted-foreground hover:bg-muted/70 transition-colors"
         >
           <Eye className="h-3 w-3" />
-          <span className="font-medium">{readCount}</span>
+          <span className="font-medium tabular-nums">{readCount}</span>
           <span>{readCount === 1 ? 'file read' : 'files read'}</span>
         </button>
       )}
@@ -58,27 +58,27 @@ function FileRow({ entry, unit, onJump, tone }: FileRowProps) {
   const unitLabel =
     entry.count === 1 ? unit : unit === 'edit' ? 'edits' : 'reads'
   const iconTone =
-    tone === 'modified' ? 'text-emerald-600' : 'text-gray-400'
+    tone === 'modified' ? 'text-success' : 'text-muted-foreground'
   const countTone =
     tone === 'modified'
-      ? 'bg-emerald-50 text-emerald-700'
-      : 'bg-gray-100 text-gray-600'
+      ? 'bg-success/15 text-success'
+      : 'bg-muted text-muted-foreground'
 
   return (
     <button
       type="button"
       onClick={() => onJump(entry.lastEventIdx)}
       title={`${entry.path} — jump to last ${unit}`}
-      className="group w-full text-left flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-50 transition-colors"
+      className="group w-full text-left flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted/50 transition-colors"
     >
       <FileText className={`h-4 w-4 shrink-0 ${iconTone}`} />
       <span className="min-w-0 flex-1 flex items-baseline gap-1 truncate">
         {dir && (
-          <span className="text-xs text-gray-400 truncate" dir="rtl">
+          <span className="text-xs text-muted-foreground truncate" dir="rtl">
             {dir}
           </span>
         )}
-        <span className="text-sm font-medium text-gray-900 truncate">
+        <span className="text-sm font-medium truncate">
           {base}
         </span>
       </span>
@@ -102,7 +102,7 @@ export function SessionFilesTab({ files, onJump }: FilesTabProps) {
 
   if (modified.length === 0 && read.length === 0) {
     return (
-      <div className="p-6 text-center text-sm text-gray-500">
+      <div className="p-6 text-center text-sm text-muted-foreground">
         No file reads or edits in this session.
       </div>
     )
@@ -112,20 +112,20 @@ export function SessionFilesTab({ files, onJump }: FilesTabProps) {
     <div className="space-y-6 p-4">
       <section>
         <header className="flex items-center gap-2 mb-2 px-1">
-          <Pencil className="h-4 w-4 text-emerald-600" />
-          <h3 className="text-sm font-semibold text-gray-900">
+          <Pencil className="h-4 w-4 text-success" />
+          <h3 className="text-sm font-semibold">
             Modified
-            <span className="ml-1.5 text-xs font-normal text-gray-500 tabular-nums">
+            <span className="ml-1.5 text-xs font-normal text-muted-foreground tabular-nums">
               ({modified.length})
             </span>
           </h3>
         </header>
         {modified.length === 0 ? (
-          <p className="px-3 py-2 text-sm text-gray-400">
+          <p className="px-3 py-2 text-sm text-muted-foreground">
             No files were modified.
           </p>
         ) : (
-          <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
+          <ul className="divide-y divide-border rounded-lg border border-border bg-card">
             {modified.map((entry) => (
               <li key={entry.path}>
                 <FileRow
@@ -142,20 +142,20 @@ export function SessionFilesTab({ files, onJump }: FilesTabProps) {
 
       <section>
         <header className="flex items-center gap-2 mb-2 px-1">
-          <Eye className="h-4 w-4 text-gray-400" />
-          <h3 className="text-sm font-medium text-gray-600">
+          <Eye className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-medium text-muted-foreground">
             Read
-            <span className="ml-1.5 text-xs font-normal text-gray-400 tabular-nums">
+            <span className="ml-1.5 text-xs font-normal text-muted-foreground tabular-nums">
               ({read.length})
             </span>
           </h3>
         </header>
         {read.length === 0 ? (
-          <p className="px-3 py-2 text-sm text-gray-400">
+          <p className="px-3 py-2 text-sm text-muted-foreground">
             No files were read.
           </p>
         ) : (
-          <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white/60">
+          <ul className="divide-y divide-border rounded-lg border border-border bg-card/60">
             {read.map((entry) => (
               <li key={entry.path}>
                 <FileRow

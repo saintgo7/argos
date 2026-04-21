@@ -65,11 +65,11 @@ export default function SessionDetailPage({
           <Skeleton className="h-8 w-72" />
           <Skeleton className="h-4 w-96" />
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4">
           <Skeleton className="h-6 w-32 mb-4" />
           <Skeleton className="h-48 w-full" />
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4">
           <Skeleton className="h-6 w-32 mb-4" />
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
@@ -105,7 +105,7 @@ export default function SessionDetailPage({
         <Button variant="outline" onClick={() => router.back()}>
           ← Back to Sessions
         </Button>
-        <p className="text-sm text-gray-500">Session not found.</p>
+        <p className="text-sm text-muted-foreground">Session not found.</p>
       </div>
     )
   }
@@ -130,19 +130,19 @@ export default function SessionDetailPage({
             </Button>
             <div className="min-w-0">
               <h1 className="text-lg font-semibold truncate">
-                {data.title ?? <span className="text-gray-400">Session {truncatedId}</span>}
+                {data.title ?? <span className="text-muted-foreground">Session {truncatedId}</span>}
               </h1>
               {data.title && (
-                <p className="text-xs text-gray-400 font-mono">Session {truncatedId}</p>
+                <p className="text-xs text-muted-foreground font-mono">Session {truncatedId}</p>
               )}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 shrink-0">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground shrink-0">
             <span>{duration}</span>
             {!data.endedAt && (
               <>
                 <span>·</span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-green-700">
+                <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-success">
                   Live
                 </span>
               </>
@@ -154,12 +154,12 @@ export default function SessionDetailPage({
           </div>
         </div>
         {data.summary && (
-          <p className="text-sm text-gray-600 whitespace-pre-wrap">{data.summary}</p>
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{data.summary}</p>
         )}
       </header>
 
       <div className="space-y-2">
-        <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-gray-500">
+        <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
           <span>{data.userName}</span>
           <span>·</span>
           <span>In {formatTokens(data.inputTokens)}</span>
@@ -176,7 +176,7 @@ export default function SessionDetailPage({
         />
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
         <Tabs
           value={tab}
           onChange={(v) => setTab(v as 'transcript' | 'files' | 'debug')}
@@ -196,7 +196,7 @@ export default function SessionDetailPage({
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-[minmax(320px,2fr)_3fr] min-h-[500px]">
-              <div className="border-r border-gray-200 overflow-y-auto max-h-[calc(100vh-360px)]">
+              <div className="border-r border-border overflow-y-auto max-h-[calc(100vh-360px)]">
                 <EventList
                   events={events}
                   selectedIdx={safeIdx ?? -1}
@@ -227,7 +227,7 @@ export default function SessionDetailPage({
                   sessionStartedAt={data.startedAt}
                 />
               </div>
-              <pre className="text-xs bg-gray-50 rounded p-4 overflow-auto whitespace-pre">
+              <pre className="text-xs bg-muted/40 text-muted-foreground rounded-md p-4 overflow-auto whitespace-pre">
                 {JSON.stringify(data, null, 2)}
               </pre>
             </div>

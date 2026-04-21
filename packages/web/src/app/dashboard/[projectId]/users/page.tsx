@@ -27,7 +27,7 @@ function UsersContent({ projectId }: { projectId: string }) {
           <Skeleton className="h-8 w-24" />
           <Skeleton className="h-10 w-96" />
         </div>
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
           <div className="space-y-0">
             <Skeleton className="h-12 w-full" />
             {[...Array(5)].map((_, i) => (
@@ -42,7 +42,7 @@ function UsersContent({ projectId }: { projectId: string }) {
   if (error) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Users</h1>
+        <h1 className="text-2xl font-semibold">Users</h1>
         <Alert variant="destructive">
           <AlertDescription className="flex items-center justify-between">
             <span>데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.</span>
@@ -58,13 +58,13 @@ function UsersContent({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <h1 className="text-2xl font-bold">Users</h1>
+        <h1 className="text-2xl font-semibold">Users</h1>
         <DateRangePicker />
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-x-auto">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-muted/40 border-b border-border text-xs text-muted-foreground">
             <tr>
               <th className="text-left py-3 px-4 font-medium whitespace-nowrap">User</th>
               <th className="text-right py-3 px-4 font-medium whitespace-nowrap">Sessions</th>
@@ -75,21 +75,21 @@ function UsersContent({ projectId }: { projectId: string }) {
               <th className="text-right py-3 px-4 font-medium whitespace-nowrap">Agents</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="text-sm">
             {data?.users.map((user) => (
-              <tr key={user.userId} className="border-b hover:bg-gray-50 transition-colors">
+              <tr key={user.userId} className="border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors">
                 <td className="py-3 px-4">{user.name}</td>
-                <td className="text-right py-3 px-4">{user.sessionCount}</td>
-                <td className="text-right py-3 px-4">{formatTokens(user.inputTokens)}</td>
-                <td className="text-right py-3 px-4">{formatTokens(user.outputTokens)}</td>
-                <td className="text-right py-3 px-4">{formatCost(user.estimatedCostUsd)}</td>
-                <td className="text-right py-3 px-4">{user.skillCalls}</td>
-                <td className="text-right py-3 px-4">{user.agentCalls}</td>
+                <td className="text-right py-3 px-4 tabular-nums">{user.sessionCount}</td>
+                <td className="text-right py-3 px-4 tabular-nums">{formatTokens(user.inputTokens)}</td>
+                <td className="text-right py-3 px-4 tabular-nums">{formatTokens(user.outputTokens)}</td>
+                <td className="text-right py-3 px-4 tabular-nums">{formatCost(user.estimatedCostUsd)}</td>
+                <td className="text-right py-3 px-4 tabular-nums">{user.skillCalls}</td>
+                <td className="text-right py-3 px-4 tabular-nums">{user.agentCalls}</td>
               </tr>
             ))}
             {(!data?.users || data.users.length === 0) && (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-gray-500">
+                <td colSpan={7} className="py-8 text-center text-muted-foreground">
                   No user data yet
                 </td>
               </tr>

@@ -87,32 +87,32 @@ function CustomTooltip({
   if (!data) return null
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-      <p className="font-medium text-gray-900 mb-2">{data.relativeTime}</p>
+    <div className="rounded-lg border border-border bg-popover text-popover-foreground shadow-lg p-3">
+      <p className="font-medium mb-2">{data.relativeTime}</p>
       <div className="space-y-1 text-sm">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-violet-500"></div>
-          <span className="text-gray-600">Input Tokens:</span>
-          <span className="font-medium">{formatTokens(data.input)}</span>
+          <span className="h-2.5 w-2.5 rounded-full bg-chart-1" />
+          <span className="text-muted-foreground">Input Tokens:</span>
+          <span className="font-medium tabular-nums">{formatTokens(data.input)}</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-          <span className="text-gray-600">Output Tokens:</span>
-          <span className="font-medium">{formatTokens(data.output)}</span>
+          <span className="h-2.5 w-2.5 rounded-full bg-chart-2" />
+          <span className="text-muted-foreground">Output Tokens:</span>
+          <span className="font-medium tabular-nums">{formatTokens(data.output)}</span>
         </div>
-        <div className="pt-1 mt-1 border-t border-gray-200">
-          <span className="text-gray-600">Cost:</span>
-          <span className="font-medium ml-2">{formatCost(data.cost)}</span>
+        <div className="pt-1 mt-1 border-t border-border">
+          <span className="text-muted-foreground">Cost:</span>
+          <span className="font-medium ml-2 tabular-nums">{formatCost(data.cost)}</span>
         </div>
         {data.model && (
           <div>
-            <span className="text-gray-600">Model:</span>
+            <span className="text-muted-foreground">Model:</span>
             <span className="font-medium ml-2">{data.model}</span>
           </div>
         )}
         {data.toolSummary && (
-          <div className="pt-1 mt-1 border-t border-gray-200">
-            <span className="text-gray-600">Tools:</span>
+          <div className="pt-1 mt-1 border-t border-border">
+            <span className="text-muted-foreground">Tools:</span>
             <span className="font-medium ml-2">{data.toolSummary}</span>
           </div>
         )}
@@ -128,7 +128,7 @@ export function SessionTimelineChart({
 }: SessionTimelineChartProps) {
   if (usageTimeline.length === 0) {
     return (
-      <p className="text-center text-gray-500 py-8">No timeline data available</p>
+      <p className="text-center text-muted-foreground py-8">No timeline data available</p>
     )
   }
 
@@ -148,29 +148,32 @@ export function SessionTimelineChart({
   return (
     <ResponsiveContainer width="100%" height={350}>
       <ComposedChart data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
         <XAxis
           dataKey="relativeTime"
-          stroke="#6b7280"
-          style={{ fontSize: '12px' }}
-          tick={{ fill: '#6b7280' }}
+          stroke="var(--color-muted-foreground)"
+          tickLine={false}
+          axisLine={false}
+          style={{ fontSize: '11px' }}
         />
         <YAxis
           tickFormatter={formatTokens}
-          stroke="#6b7280"
-          style={{ fontSize: '12px' }}
+          stroke="var(--color-muted-foreground)"
+          tickLine={false}
+          axisLine={false}
+          style={{ fontSize: '11px' }}
         />
-        <Tooltip content={<CustomTooltip />} />
+        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-muted)', opacity: 0.4 }} />
         <Bar
           dataKey="input"
           stackId="tokens"
-          fill="#8b5cf6"
+          fill="var(--color-chart-1)"
           name="Input Tokens"
         />
         <Bar
           dataKey="output"
           stackId="tokens"
-          fill="#3b82f6"
+          fill="var(--color-chart-2)"
           name="Output Tokens"
         />
       </ComposedChart>

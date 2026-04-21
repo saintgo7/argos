@@ -8,8 +8,8 @@ interface EmptyStateProps {
 
 export function EmptyState({ email }: EmptyStateProps) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/40">
-      <div className="w-full max-w-lg space-y-6 p-8 bg-white rounded-xl border shadow-sm">
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="w-full max-w-lg space-y-6 p-8 bg-card rounded-xl ring-1 ring-foreground/10">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Argos</h1>
@@ -17,7 +17,7 @@ export function EmptyState({ email }: EmptyStateProps) {
             <span className="text-sm text-muted-foreground">{email}</span>
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
-              className="text-sm text-red-600 hover:underline"
+              className="text-sm text-destructive hover:underline"
             >
               Log out
             </button>

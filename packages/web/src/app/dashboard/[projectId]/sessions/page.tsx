@@ -28,7 +28,7 @@ function SessionsContent({ projectId }: { projectId: string }) {
           <Skeleton className="h-8 w-32" />
           <Skeleton className="h-10 w-96" />
         </div>
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
           <Skeleton className="h-12 w-full" />
           {[...Array(10)].map((_, i) => (
             <Skeleton key={i} className="h-16 w-full" />
@@ -41,7 +41,7 @@ function SessionsContent({ projectId }: { projectId: string }) {
   if (error) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Sessions</h1>
+        <h1 className="text-2xl font-semibold">Sessions</h1>
         <Alert variant="destructive">
           <AlertDescription className="flex items-center justify-between">
             <span>데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.</span>
@@ -62,15 +62,15 @@ function SessionsContent({ projectId }: { projectId: string }) {
     return (
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-          <h1 className="text-2xl font-bold">Sessions</h1>
+          <h1 className="text-2xl font-semibold">Sessions</h1>
           <DateRangePicker />
         </div>
 
-        <div className="bg-white p-12 rounded-lg shadow text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-12 text-center">
+          <h2 className="text-lg font-medium mb-2">
             이 기간에 세션이 없습니다
           </h2>
-          <p className="text-gray-600">
+          <p className="text-sm text-muted-foreground">
             날짜 범위를 변경해보세요.
           </p>
         </div>
@@ -81,13 +81,13 @@ function SessionsContent({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <h1 className="text-2xl font-bold">Sessions</h1>
+        <h1 className="text-2xl font-semibold">Sessions</h1>
         <DateRangePicker />
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-x-auto">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-muted/40 border-b border-border text-xs text-muted-foreground">
             <tr>
               <th className="text-left py-3 px-4 font-medium whitespace-nowrap">사용자</th>
               <th className="text-left py-3 px-4 font-medium">제목</th>
@@ -97,23 +97,23 @@ function SessionsContent({ projectId }: { projectId: string }) {
               <th className="text-left py-3 px-4 font-medium whitespace-nowrap">시간</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="text-sm">
             {data.sessions.map((session) => (
               <tr
                 key={session.id}
                 onClick={() => handleRowClick(session.id)}
-                className="border-b hover:bg-gray-50 cursor-pointer transition-colors"
+                className="border-b border-border last:border-b-0 hover:bg-muted/40 cursor-pointer transition-colors"
               >
                 <td className="py-3 px-4 whitespace-nowrap">{session.userName}</td>
                 <td className="py-3 px-4 max-w-md">
-                  <div className="truncate text-gray-900">
-                    {session.title ?? <span className="text-gray-400">—</span>}
+                  <div className="truncate">
+                    {session.title ?? <span className="text-muted-foreground">—</span>}
                   </div>
                 </td>
-                <td className="text-right py-3 px-4 whitespace-nowrap">{formatTokens(session.inputTokens)}</td>
-                <td className="text-right py-3 px-4 whitespace-nowrap">{formatTokens(session.outputTokens)}</td>
-                <td className="text-right py-3 px-4 whitespace-nowrap">{formatCost(session.estimatedCostUsd)}</td>
-                <td className="py-3 px-4 whitespace-nowrap tabular-nums text-gray-600">
+                <td className="text-right py-3 px-4 whitespace-nowrap tabular-nums">{formatTokens(session.inputTokens)}</td>
+                <td className="text-right py-3 px-4 whitespace-nowrap tabular-nums">{formatTokens(session.outputTokens)}</td>
+                <td className="text-right py-3 px-4 whitespace-nowrap tabular-nums">{formatCost(session.estimatedCostUsd)}</td>
+                <td className="py-3 px-4 whitespace-nowrap tabular-nums text-muted-foreground">
                   {formatDateTimeFull(session.startedAt)}
                 </td>
               </tr>

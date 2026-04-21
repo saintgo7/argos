@@ -7,7 +7,13 @@ interface SkillBarChartProps {
   data: SkillStat[]
 }
 
-const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444']
+const CHART_VARS = [
+  'var(--color-chart-1)',
+  'var(--color-chart-2)',
+  'var(--color-chart-3)',
+  'var(--color-chart-4)',
+  'var(--color-chart-5)',
+]
 
 function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
   if (!active || !payload || payload.length === 0) return null
@@ -16,13 +22,11 @@ function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
   const calls = payload[0]?.value ?? 0
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-      <p className="font-medium text-gray-900 mb-1" title={skillName}>
-        {skillName}
-      </p>
+    <div className="rounded-lg border border-border bg-popover text-popover-foreground shadow-lg p-3">
+      <p className="font-medium mb-1" title={skillName}>{skillName}</p>
       <div className="text-sm">
-        <span className="text-gray-600">Calls:</span>
-        <span className="font-medium ml-2">{calls.toLocaleString()}</span>
+        <span className="text-muted-foreground">Calls:</span>
+        <span className="font-medium ml-2 tabular-nums">{calls.toLocaleString()}</span>
       </div>
     </div>
   )
@@ -43,23 +47,27 @@ export function SkillBarChart({ data }: SkillBarChartProps) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 10 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
         <XAxis
           type="number"
-          stroke="#6b7280"
-          style={{ fontSize: '12px' }}
+          stroke="var(--color-muted-foreground)"
+          tickLine={false}
+          axisLine={false}
+          style={{ fontSize: '11px' }}
         />
         <YAxis
           dataKey="displaySkill"
           type="category"
           width={120}
-          stroke="#6b7280"
-          style={{ fontSize: '12px' }}
+          stroke="var(--color-muted-foreground)"
+          tickLine={false}
+          axisLine={false}
+          style={{ fontSize: '11px' }}
         />
-        <Tooltip content={<CustomTooltip />} />
+        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-muted)', opacity: 0.4 }} />
         <Bar dataKey="calls" name="Calls" radius={[0, 4, 4, 0]}>
           {chartData.map((_, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <Cell key={`cell-${index}`} fill={CHART_VARS[index % CHART_VARS.length]} />
           ))}
         </Bar>
       </BarChart>
