@@ -87,9 +87,9 @@
     --input: oklch(0.15 0 0 / 12%);
     --ring: oklch(0.67 0.13 40 / 40%);
 
-    --brand: oklch(0.67 0.13 40);
+    --brand: #D7763D;
     --brand-foreground: oklch(0.99 0 0);
-    --brand-subtle: oklch(0.67 0.13 40 / 15%);
+    --brand-subtle: oklch(0.66 0.14 48 / 15%);
     --brand-2: oklch(0.70 0.09 235);
     --brand-2-foreground: oklch(0.99 0 0);
     --brand-2-subtle: oklch(0.70 0.09 235 / 15%);
@@ -139,9 +139,9 @@
     --input: oklch(1 0 0 / 12%);
     --ring: oklch(0.72 0.14 40 / 50%);
 
-    --brand: oklch(0.72 0.14 40);
+    --brand: #D7763D;
     --brand-foreground: oklch(0.15 0 0);
-    --brand-subtle: oklch(0.72 0.14 40 / 18%);
+    --brand-subtle: oklch(0.66 0.14 48 / 18%);
     --brand-2: oklch(0.74 0.09 235);
     --brand-2-foreground: oklch(0.15 0 0);
     --brand-2-subtle: oklch(0.74 0.09 235 / 18%);
