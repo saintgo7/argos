@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Analytics for Your Claude Code.</strong><br/>
-  Anthropic Console은 나를 보여주고, Argos는 우리 팀을 보여줍니다.
+  측정할 수 없다면 개선할 수 없습니다. Argos는 팀의 Claude Code 사용 패턴을 분석해줍니다. 팀이 AI를 어떻게 활용하는지, 어떤 스킬이 효과적인지, 어디서 막히는지를 파악해보세요.
 </p>
 
 <p align="center">
