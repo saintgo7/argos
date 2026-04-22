@@ -3,21 +3,6 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CopyPromptButton } from "@/components/copy-prompt-button";
-
-const AI_AGENT_INSTALL_PROMPT = `이 프로젝트에 Argos를 설치해줘. Argos는 Claude Code 팀을 위한 사용량 애널리틱스야.
-참고: https://github.com/vibemafiaclub/argos
-
-다음 3단계로 진행:
-
-1. \`npm install -g argos-ai\` 로 CLI를 전역 설치.
-2. 프로젝트 루트에서 \`argos\` 를 실행. 브라우저 기반 로그인과 프로젝트 초기화가 진행되는데, 이 단계는 사용자 인증이 필요하므로 사용자에게 직접 실행을 요청하고 완료 확인을 받은 뒤 다음 단계로 넘어갈 것.
-3. 생성·수정된 파일을 커밋:
-   git add .argos/project.json .claude/settings.json
-   git commit -m "chore: add argos tracking"
-
-기타 파일은 수정하지 마.
-`;
 
 export default async function Home() {
   const session = await auth();
@@ -100,9 +85,12 @@ export default async function Home() {
               href="#install"
               className={buttonVariants({ size: "lg", variant: "outline" })}
             >
-              30초 설치 가이드
+              어떻게 동작하나요?
             </a>
           </div>
+          <p className="text-sm text-muted-foreground pt-1">
+            가입 → 프롬프트 복사 → Claude Code에 붙여넣기. 터미널 명령어 타이핑 0개.
+          </p>
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <span className="inline-flex items-center rounded-full bg-brand-subtle text-brand px-3 py-1 text-xs font-medium">
               무료로 시작
@@ -286,55 +274,32 @@ export default async function Home() {
         {/* Section 6: Install */}
         <section id="install" className="space-y-4">
           <div className="space-y-1">
-            <h2 className="text-xl font-semibold">30초 설치</h2>
+            <h2 className="text-xl font-semibold">어떻게 동작하나요?</h2>
             <p className="text-sm text-muted-foreground">
-              가입 후 프로젝트 루트에서 실행하세요. 팀원은 같은 저장소에서{" "}
-              <code className="text-foreground">argos</code>만 실행하면 자동
-              합류합니다.
+              가입하면 전용 세팅 프롬프트가 발급됩니다. Claude Code에 한 번
+              붙여넣으면 끝.
             </p>
           </div>
           <Card>
             <CardContent className="space-y-3">
               <InstallStep
                 n={1}
-                label="CLI 설치"
-                cmd="npm install -g argos-ai"
+                label="가입"
+                body="이메일로 가입하면 1회용·1시간 수명의 세팅 프롬프트가 발급됩니다."
               />
               <InstallStep
                 n={2}
-                label="로그인 & 프로젝트 초기화"
-                cmd="cd your-project && argos"
+                label="Claude Code에 붙여넣기"
+                body="발급된 프롬프트를 복사해 프로젝트 루트의 Claude Code 세션에 붙여넣으면 CLI 설치 · 조직 · 프로젝트 · hook 설치가 자동 진행됩니다."
+                preview={`npm install -g argos-ai@latest && argos setup --token=argos_onb_•••`}
               />
               <InstallStep
                 n={3}
-                label="팀 저장소에 커밋"
-                cmd={
-                  'git add .argos/project.json .claude/settings.json\ngit commit -m "chore: add argos tracking"'
-                }
+                label="팀원 자동 합류"
+                body="저장소에 .argos/project.json 과 .claude/settings.json 을 커밋하면, 팀원은 clone 후 Claude Code를 여는 순간 CLI가 자동 설치됩니다. 첫 세션에서 argos 한 번만 실행하면 팀에 합류합니다."
               />
             </CardContent>
           </Card>
-
-          <div className="rounded-lg border border-dashed border-border p-4 space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-1">
-                <div className="text-sm font-medium">
-                  또는, AI 에이전트에게 맡기세요
-                </div>
-                <div className="text-xs text-muted-foreground leading-relaxed">
-                  Claude Code · Cursor · Copilot 대화창에 이 프롬프트를
-                  붙여넣으면 위 단계를 대신 진행합니다.
-                </div>
-              </div>
-              <CopyPromptButton
-                text={AI_AGENT_INSTALL_PROMPT}
-                className="flex-shrink-0"
-              />
-            </div>
-            <pre className="bg-muted text-foreground/80 rounded-md px-3 py-2 text-xs font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
-              {AI_AGENT_INSTALL_PROMPT}
-            </pre>
-          </div>
         </section>
 
         {/* Section 7: FAQ */}
@@ -347,6 +312,10 @@ export default async function Home() {
           </div>
           <Card>
             <CardContent className="py-1">
+              <FaqItem
+                q="가입 후 받는 세팅 프롬프트는 안전한가요?"
+                a="프롬프트 안의 토큰은 발급 후 1시간만 유효하고, Claude Code가 1번 사용하면 즉시 폐기됩니다. 프롬프트 자체가 유출되더라도 교환 유효기간이 지났거나 이미 소비된 토큰은 아무 일도 일으킬 수 없습니다. 교환 이후 실제 인증에 쓰이는 토큰은 로컬 ~/.argos/config.json 에만 저장됩니다."
+              />
               <FaqItem
                 q="프롬프트 원문이 서버로 전송되나요?"
                 a="세션 종료 시 HUMAN / ASSISTANT / TOOL 메시지 전체가 서버로 전송됩니다. 각 메시지 최대 50,000자에서 절단됩니다. 민감한 프롬프트를 다루는 환경이라면 자체호스팅을 권장합니다."
@@ -432,7 +401,8 @@ export default async function Home() {
                 Claude Code 사용 패턴을 파악하고, 개선하세요.
               </h2>
               <p className="text-sm text-muted-foreground max-w-xl mx-auto">
-                30초면 설치가 끝납니다. 팀원은 자동으로 합류됩니다.
+                가입하고, Claude Code에 프롬프트 하나 붙여넣으세요. 팀원은 저장소만
+                clone하면 자동 세팅됩니다.
               </p>
               <div className="flex flex-wrap gap-2 justify-center pt-2">
                 <Link
@@ -504,11 +474,13 @@ function CollectItem({
 function InstallStep({
   n,
   label,
-  cmd,
+  body,
+  preview,
 }: {
   n: number;
   label: string;
-  cmd: string;
+  body: string;
+  preview?: string;
 }) {
   return (
     <div className="flex gap-3">
@@ -517,9 +489,14 @@ function InstallStep({
       </div>
       <div className="flex-1 space-y-1">
         <div className="text-sm font-medium">{label}</div>
-        <pre className="bg-muted text-foreground/90 rounded-md px-3 py-2 text-xs font-mono whitespace-pre overflow-x-auto">
-          {cmd}
-        </pre>
+        <div className="text-sm text-muted-foreground leading-relaxed">
+          {body}
+        </div>
+        {preview && (
+          <pre className="mt-2 bg-muted text-foreground/90 rounded-md px-3 py-2 text-xs font-mono whitespace-pre overflow-x-auto">
+            {preview}
+          </pre>
+        )}
       </div>
     </div>
   );
