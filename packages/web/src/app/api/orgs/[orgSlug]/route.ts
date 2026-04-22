@@ -5,6 +5,7 @@ import { db } from '@/lib/server/db'
 import { requireAuth } from '@/lib/server/auth-helper'
 import { handleRouteError } from '@/lib/server/error-helper'
 import { assertOrgAccessBySlugOrResponse } from '@/lib/server/dashboard-route-helper'
+import { canManageOrg, canDeleteOrg, forbiddenByRole } from '@/lib/server/rbac'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -68,6 +69,11 @@ export async function PATCH(
     const access = await assertOrgAccessBySlugOrResponse(orgSlug, userId)
     if (access instanceof NextResponse) return access
 
+    // org 설정 변경은 Manager+ 권한.
+    if (!canManageOrg(access.role)) {
+      return forbiddenByRole(access.role, 'MANAGER 이상')
+    }
+
     const body = await req.json()
     const input = UpdateOrgSchema.parse(body)
 
@@ -125,6 +131,11 @@ export async function DELETE(
 
     const access = await assertOrgAccessBySlugOrResponse(orgSlug, userId)
     if (access instanceof NextResponse) return access
+
+    // org 삭제는 OWNER만.
+    if (!canDeleteOrg(access.role)) {
+      return forbiddenByRole(access.role, 'OWNER만')
+    }
 
     await db.organization.delete({ where: { id: access.org.id } })
 

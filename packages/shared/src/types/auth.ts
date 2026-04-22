@@ -11,9 +11,11 @@ export interface LoginResponse {
   user: User
 }
 
+export type OrgRole = 'OWNER' | 'MANAGER' | 'MEMBER' | 'VIEWER'
+
 export interface OrgMembership {
   id: string
   userId: string
   orgId: string
-  role: 'OWNER' | 'MEMBER'
+  role: OrgRole
 }

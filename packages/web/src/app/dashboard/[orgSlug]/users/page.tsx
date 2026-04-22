@@ -1,7 +1,8 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useEffect } from 'react'
 import { useParams, useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { useOrgs } from '@/hooks/use-orgs'
 import { subDays, format } from 'date-fns'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
 import { useDashboardUsers } from '@/hooks/use-dashboard-users'
@@ -180,8 +181,20 @@ function UsersContent({
 export default function OrgUsersPage() {
   const params = useParams()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const orgSlug = params.orgSlug as string
   const projectId = searchParams.get('projectId') ?? undefined
+
+  // VIEWER는 사용자별 통계 페이지에 접근 불가 (API 403). 직접 URL 진입 시 overview로.
+  const { data: orgsData } = useOrgs()
+  const role = orgsData?.orgs.find((o) => o.slug === orgSlug)?.role
+  useEffect(() => {
+    if (role === 'VIEWER') {
+      router.replace(`/dashboard/${orgSlug}/overview`)
+    }
+  }, [role, orgSlug, router])
+
+  if (role === 'VIEWER') return null
 
   return (
     <Suspense fallback={<Skeleton className="h-screen w-full" />}>

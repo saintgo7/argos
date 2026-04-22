@@ -62,8 +62,10 @@ model OrgMembership {
 }
 
 enum OrgRole {
-  OWNER
-  MEMBER
+  OWNER    // org 전체 권한 (삭제 포함)
+  MANAGER  // 멤버 관리 + 개인 단위 드릴다운 가능 (OWNER 제외한 전 기능)
+  MEMBER   // 기본 역할. 팀 세션·개인 드릴다운 열람 가능
+  VIEWER   // 팀 단위 집계만. 개인 식별자·전사·세션 리스트 접근 불가
 }
 
 // ─── CliAuthRequest ────────────────────────────────────────────────────────

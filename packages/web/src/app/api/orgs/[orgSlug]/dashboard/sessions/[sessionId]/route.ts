@@ -4,6 +4,7 @@ import { db } from '@/lib/server/db'
 import { requireAuth } from '@/lib/server/auth-helper'
 import { handleRouteError } from '@/lib/server/error-helper'
 import { assertOrgAccessBySlugOrResponse } from '@/lib/server/dashboard-route-helper'
+import { canAccessSession, forbiddenByRole } from '@/lib/server/rbac'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -35,6 +36,11 @@ export async function GET(
 
     if (!session || session.project.orgId !== access.org.id) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    }
+
+    // Viewer는 본인 세션만 열람 가능 (D2 결정).
+    if (!canAccessSession(access.role, session.user.id, userId)) {
+      return forbiddenByRole(access.role, '본인 세션만 열람 가능')
     }
 
     const totalInput = session.usageRecords.reduce((sum, r) => sum + r.inputTokens, 0)
@@ -141,11 +147,16 @@ export async function DELETE(
 
     const session = await db.claudeSession.findUnique({
       where: { id: sessionId },
-      select: { project: { select: { orgId: true } } },
+      select: { userId: true, project: { select: { orgId: true } } },
     })
 
     if (!session || session.project.orgId !== access.org.id) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    }
+
+    // Viewer는 본인 세션만 삭제 가능.
+    if (!canAccessSession(access.role, session.userId, userId)) {
+      return forbiddenByRole(access.role, '본인 세션만 삭제 가능')
     }
 
     await db.claudeSession.delete({ where: { id: sessionId } })

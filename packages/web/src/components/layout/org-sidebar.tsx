@@ -8,25 +8,45 @@ import { signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 import { OrgSwitcher } from './org-switcher'
 import { CreateOrgModal } from '@/components/org/create-org-modal'
+import { useOrgs } from '@/hooks/use-orgs'
 
-const topNavItems = [
-  { label: 'Home', href: '' },
-  { label: 'Overview', href: '/overview' },
-  { label: 'Sessions', href: '/sessions' },
-  { label: 'Users', href: '/users' },
-  { label: 'Agents', href: '/agents' },
-  { label: 'Skills', href: '/skills' },
+type NavItem = {
+  label: string
+  href: string
+  /** 역할 제한. 지정된 역할만 보임. undefined면 모두에게 보임. */
+  viewerSafe?: boolean
+}
+
+// viewerSafe: true 인 항목만 VIEWER에게 노출. 나머지(Sessions/Users)는 개인 단위
+// 데이터 페이지이므로 VIEWER에게 숨김 (API는 이미 403 차단).
+const topNavItems: NavItem[] = [
+  { label: 'Home', href: '', viewerSafe: true },
+  { label: 'Overview', href: '/overview', viewerSafe: true },
+  { label: 'Sessions', href: '/sessions', viewerSafe: false },
+  { label: 'Users', href: '/users', viewerSafe: false },
+  { label: 'Agents', href: '/agents', viewerSafe: true },
+  { label: 'Skills', href: '/skills', viewerSafe: true },
 ]
 
-const bottomNavItems = [{ label: 'Settings', href: '/settings' }]
-
-const mobileNavItems = [...topNavItems, ...bottomNavItems]
+const bottomNavItems: NavItem[] = [
+  { label: 'Settings', href: '/settings', viewerSafe: true },
+]
 
 export function OrgSidebar() {
   const params = useParams()
   const pathname = usePathname()
   const orgSlug = params.orgSlug as string
   const [createOpen, setCreateOpen] = useState(false)
+  const { data: orgsData } = useOrgs()
+  const currentOrg = orgsData?.orgs.find((o) => o.slug === orgSlug)
+  const role = currentOrg?.role ?? ''
+  const isViewer = role === 'VIEWER'
+
+  const filterItems = (items: NavItem[]) =>
+    items.filter((i) => !isViewer || i.viewerSafe)
+  const visibleTop = filterItems(topNavItems)
+  const visibleBottom = filterItems(bottomNavItems)
+  const mobileNavItems = [...visibleTop, ...visibleBottom]
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/login' })
@@ -93,10 +113,10 @@ export function OrgSidebar() {
         </div>
         <nav className="px-3 space-y-1 flex-1 flex flex-col">
           <div className="space-y-1">
-            {topNavItems.map((item) => renderLink(item, 'desktop'))}
+            {visibleTop.map((item) => renderLink(item, 'desktop'))}
           </div>
           <div className="mt-auto space-y-1">
-            {bottomNavItems.map((item) => renderLink(item, 'desktop'))}
+            {visibleBottom.map((item) => renderLink(item, 'desktop'))}
           </div>
         </nav>
         <div className="p-3 border-t">

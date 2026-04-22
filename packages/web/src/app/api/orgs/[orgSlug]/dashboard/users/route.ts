@@ -12,6 +12,7 @@ import {
   getDailyRollupsForProjects,
   aggregateUserStats,
 } from '@/lib/server/daily-rollup'
+import { canAccessIndividualData, forbiddenByRole } from '@/lib/server/rbac'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -30,6 +31,11 @@ export async function GET(
     const access = await assertOrgAccessBySlugOrResponse(orgSlug, userId)
     if (access instanceof NextResponse) return access
     const orgId = access.org.id
+
+    // Viewer 차단: 사용자별 통계는 개인 식별자·개인 드릴다운 그 자체.
+    if (!canAccessIndividualData(access.role)) {
+      return forbiddenByRole(access.role, 'MEMBER 이상')
+    }
 
     const projectIdParam = req.nextUrl.searchParams.get('projectId')
     const projectIds = await resolveOrgScopedProjectIds(orgId, projectIdParam)

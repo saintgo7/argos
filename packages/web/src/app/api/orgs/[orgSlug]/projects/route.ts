@@ -5,6 +5,7 @@ import { requireAuth } from '@/lib/server/auth-helper'
 import { handleRouteError } from '@/lib/server/error-helper'
 import { assertOrgAccessBySlugOrResponse } from '@/lib/server/dashboard-route-helper'
 import { generateUniqueProjectSlug } from '@/lib/server/slug'
+import { canManageOrg, forbiddenByRole } from '@/lib/server/rbac'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -60,6 +61,11 @@ export async function POST(
 
     const access = await assertOrgAccessBySlugOrResponse(orgSlug, userId)
     if (access instanceof NextResponse) return access
+
+    // 프로젝트 생성은 Manager+ 권한.
+    if (!canManageOrg(access.role)) {
+      return forbiddenByRole(access.role, 'MANAGER 이상')
+    }
 
     const body = await req.json()
     const { name } = CreateProjectSchema.parse(body)

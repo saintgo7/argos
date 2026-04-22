@@ -18,6 +18,7 @@ import { useOrgs } from '@/hooks/use-orgs'
 import { useUpdateOrg } from '@/hooks/use-update-org'
 import { ApiError } from '@/lib/api-client'
 import { DeleteOrgModal } from '@/components/org/delete-org-modal'
+import Link from 'next/link'
 
 interface OrgSettingsFormProps {
   orgSlug: string
@@ -219,6 +220,21 @@ function OrgSettingsContent({ orgSlug }: { orgSlug: string }) {
           조직 정보를 관리합니다.
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Members</CardTitle>
+          <CardDescription>멤버와 역할 관리</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link
+            href={`/dashboard/${currentOrg.slug}/settings/members`}
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            멤버 관리 →
+          </Link>
+        </CardContent>
+      </Card>
 
       <OrgSettingsForm
         key={`${currentOrg.slug}:${currentOrg.name}`}

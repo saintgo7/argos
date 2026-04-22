@@ -1,7 +1,8 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useParams, useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { useOrgs } from '@/hooks/use-orgs'
 import { subDays, format } from 'date-fns'
 import { Trash2 } from 'lucide-react'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
@@ -372,8 +373,20 @@ function SessionsContent({
 export default function OrgSessionsPage() {
   const params = useParams()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const orgSlug = params.orgSlug as string
   const projectId = searchParams.get('projectId') ?? undefined
+
+  // VIEWER는 세션 리스트에 접근 불가 (API 403). 직접 URL 진입 시 overview로 이동.
+  const { data: orgsData } = useOrgs()
+  const role = orgsData?.orgs.find((o) => o.slug === orgSlug)?.role
+  useEffect(() => {
+    if (role === 'VIEWER') {
+      router.replace(`/dashboard/${orgSlug}/overview`)
+    }
+  }, [role, orgSlug, router])
+
+  if (role === 'VIEWER') return null
 
   return (
     <Suspense fallback={<Skeleton className="h-screen w-full" />}>

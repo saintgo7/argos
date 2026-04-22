@@ -9,6 +9,7 @@ import {
   assertOrgAccessBySlugOrResponse,
   resolveOrgScopedProjectIds,
 } from '@/lib/server/dashboard-route-helper'
+import { canAccessIndividualData, forbiddenByRole } from '@/lib/server/rbac'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -44,6 +45,11 @@ export async function GET(
 
     const access = await assertOrgAccessBySlugOrResponse(orgSlug, userId)
     if (access instanceof NextResponse) return access
+
+    // Viewer 차단: 세션 목록은 title에 HUMAN 프롬프트 원문(PII 가능)이 포함되므로 전체 금지.
+    if (!canAccessIndividualData(access.role)) {
+      return forbiddenByRole(access.role, 'MEMBER 이상')
+    }
 
     const projectIdParam = req.nextUrl.searchParams.get('projectId')
     const projectIds = await resolveOrgScopedProjectIds(access.org.id, projectIdParam)
