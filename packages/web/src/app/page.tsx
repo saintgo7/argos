@@ -103,8 +103,19 @@ export default async function Home() {
               30초 설치 가이드
             </a>
           </div>
-          <p className="text-sm text-muted-foreground">
-            신용카드 없이 바로 시작 · 오픈소스 · 자체호스팅 가능
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="inline-flex items-center rounded-full bg-brand-subtle text-brand px-3 py-1 text-xs font-medium">
+              무료로 시작
+            </span>
+            <span className="inline-flex items-center rounded-full bg-brand-subtle text-brand px-3 py-1 text-xs font-medium">
+              오픈소스 (MIT)
+            </span>
+            <span className="inline-flex items-center rounded-full bg-brand-subtle text-brand px-3 py-1 text-xs font-medium">
+              자체호스팅 가능
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            신용카드 필요 없음
           </p>
         </section>
 
@@ -138,7 +149,7 @@ export default async function Home() {
           <div className="space-y-1">
             <h2 className="text-xl font-semibold">이런 분들에게 잘 맞습니다</h2>
           </div>
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
             <PersonaCard
               badge="관리자"
               title="우리 팀 토큰, 효율적으로 쓰고 있을까?"
@@ -153,6 +164,11 @@ export default async function Home() {
               badge="플랫폼 · 보안팀"
               title="거버넌스는 어떻게 하지?"
               body="모든 프롬프트/활동을 기록하고, 문제가 되는 사용패턴을 빠르게 찾아낼 수 있습니다. 자체호스팅으로 보안까지 보장합니다."
+            />
+            <PersonaCard
+              badge="1인 인디해커"
+              title="내 바이브코딩, 뭘 개선해야 할까?"
+              body="혼자 Claude Code로 제품을 만드는 분에게도 그대로 작동합니다. 토큰을 어디에 태우는지, 어떤 루프에서 실패가 반복되는지 세션 단위로 돌아볼 수 있습니다. 자체호스팅하면 내 프롬프트는 내 머신에만 남습니다."
             />
           </div>
         </section>
@@ -354,6 +370,14 @@ export default async function Home() {
               <FaqItem
                 q="CI/CD나 headless 환경에서도 동작하나요?"
                 a="동작합니다. Claude Code가 돌아가는 어떤 환경이든 훅이 실행되면 이벤트를 보냅니다. CI 러너, GitHub Actions, 로컬 개발자 머신 모두에서 동일한 대시보드로 모입니다."
+              />
+              <FaqItem
+                q="토큰 사용량만 보고 싶다면 ccusage 같은 OSS CLI로 충분하지 않나요?"
+                a="토큰 합계만 보려면 CLI로도 충분합니다. Argos는 그 위에 세션 타임라인 재생, 실패 구간 하이라이팅, 스킬·에이전트 호출 패턴 시각화, 세션별 전사 조회까지 제공합니다. '얼마 썼는지'가 아니라 '어디서 태웠고, 어디서 깨졌고, 뭐가 반복되는지'를 눈으로 추적하고 싶다면 CLI는 부족합니다. 자체호스팅하면 데이터도 외부로 나가지 않습니다."
+              />
+              <FaqItem
+                q="자체 대시보드를 직접 구축하는 것 대비 이점은?"
+                a="Argos는 Claude Code 훅 스키마·세션 재조립·스킬 집계·토큰 회계를 이미 내장하고 있습니다. 자체 구축 시 데이터 파이프라인·UI·유지보수를 1~3개월 단위로 안고 가야 하며, 그 사이 Claude Code의 훅 포맷 변경을 따라가야 합니다. MIT 라이선스라 필요하면 포크해서 원하는 대로 커스터마이징할 수도 있습니다."
               />
             </CardContent>
           </Card>
