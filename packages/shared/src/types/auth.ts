@@ -11,6 +11,20 @@ export interface LoginResponse {
   user: User
 }
 
+export interface OnboardTokenResponse {
+  onboardToken: string
+  expiresAt: string
+}
+
+export interface ExchangeRequest {
+  onboardToken: string
+}
+
+export interface ExchangeResponse {
+  token: string
+  user: User
+}
+
 export type OrgRole = 'OWNER' | 'MANAGER' | 'MEMBER' | 'VIEWER'
 
 export interface OrgMembership {

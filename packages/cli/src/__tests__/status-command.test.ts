@@ -33,6 +33,7 @@ function makeMockDeps(overrides: Partial<ExternalDeps> = {}): ExternalDeps {
       login: vi.fn(),
     },
     api: {
+      exchange: vi.fn(),
       createProject: vi.fn(),
       joinOrg: vi.fn(),
       ensureMembership: vi.fn(),

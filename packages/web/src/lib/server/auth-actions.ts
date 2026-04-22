@@ -1,9 +1,12 @@
 import 'server-only'
 
 import bcrypt from 'bcryptjs'
-import { createHash } from 'crypto'
+import { createHash, randomBytes } from 'crypto'
 import { db } from './db'
 import { signJwt } from './jwt'
+
+const ONBOARD_TOKEN_TTL_MS = 60 * 60 * 1000 // 1시간
+const ONBOARD_TOKEN_PREFIX = 'argos_onb_'
 
 export interface AuthResultUser {
   id: string
@@ -51,6 +54,57 @@ export async function loginUser(input: {
       email: user.email,
       name: user.name,
       createdAt: user.createdAt,
+    },
+  }
+}
+
+/**
+ * 가입 직후 복사되는 "argos setup --token=..." 프롬프트용 1회용 토큰을 발급한다.
+ * 1시간 수명. exchangeOnboardToken으로 소비되면 usedAt이 찍혀 재사용 불가.
+ */
+export async function issueOnboardToken(userId: string): Promise<{
+  token: string
+  expiresAt: Date
+}> {
+  const token = ONBOARD_TOKEN_PREFIX + randomBytes(24).toString('hex')
+  const expiresAt = new Date(Date.now() + ONBOARD_TOKEN_TTL_MS)
+  await db.onboardToken.create({ data: { token, userId, expiresAt } })
+  return { token, expiresAt }
+}
+
+/**
+ * onboard token을 소비해 long-lived CLI JWT를 발급한다.
+ * 실패 사유: 'NOT_FOUND' | 'EXPIRED' | 'ALREADY_USED'
+ */
+export async function exchangeOnboardToken(
+  onboardToken: string
+): Promise<AuthResult | 'NOT_FOUND' | 'EXPIRED' | 'ALREADY_USED'> {
+  const record = await db.onboardToken.findUnique({
+    where: { token: onboardToken },
+    include: { user: true },
+  })
+  if (!record) return 'NOT_FOUND'
+  if (record.usedAt) return 'ALREADY_USED'
+  if (new Date() > record.expiresAt) return 'EXPIRED'
+
+  const updated = await db.onboardToken.updateMany({
+    where: { token: onboardToken, usedAt: null },
+    data: { usedAt: new Date() },
+  })
+  // updateMany의 count=0이면 동시 요청이 먼저 소비했다는 뜻
+  if (updated.count === 0) return 'ALREADY_USED'
+
+  const jwt = await signJwt(record.userId)
+  const tokenHash = createHash('sha256').update(jwt).digest('hex')
+  await db.cliToken.create({ data: { userId: record.userId, tokenHash } })
+
+  return {
+    token: jwt,
+    user: {
+      id: record.user.id,
+      email: record.user.email,
+      name: record.user.name,
+      createdAt: record.user.createdAt,
     },
   }
 }

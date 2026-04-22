@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url'
 import { realDeps } from './adapters.js'
 import { makeDefaultCommand } from './commands/default.js'
 import { makeHookCommand } from './commands/hook.js'
+import { makeSetupCommand } from './commands/setup.js'
 import { makeStatusCommand } from './commands/status.js'
 import { makeLogoutCommand } from './commands/logout.js'
 
@@ -24,6 +25,14 @@ const program = new Command()
 
 // Default command (argos without subcommand)
 program.action(makeDefaultCommand(realDeps))
+
+// Setup command (called with onboard token from web signup prompt)
+program
+  .command('setup')
+  .description('non-interactive setup using onboard token from web signup')
+  .option('--token <token>', 'onboard token issued by the Argos web app')
+  .option('--api-url <url>', 'API URL override (for self-hosting)')
+  .action(makeSetupCommand(realDeps))
 
 // Hook command (internal - called by Claude Code)
 program

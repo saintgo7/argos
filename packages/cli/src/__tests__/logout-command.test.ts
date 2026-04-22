@@ -24,6 +24,7 @@ function makeMockDeps(overrides: Partial<ExternalDeps> = {}): ExternalDeps {
       login: vi.fn(),
     },
     api: {
+      exchange: vi.fn(),
       createProject: vi.fn(),
       joinOrg: vi.fn(),
       ensureMembership: vi.fn(),
@@ -90,6 +91,7 @@ describe('makeLogoutCommand', () => {
     it('deps.api.revokeToken 이 throw해도 deps.config.delete 는 호출된다', async () => {
       const deps = makeMockDeps({
         api: {
+          exchange: vi.fn(),
           createProject: vi.fn(),
           joinOrg: vi.fn(),
           ensureMembership: vi.fn(),

@@ -8,7 +8,7 @@ import { injectHooks } from './lib/hooks-inject.js'
 import { sendEventBackground } from './lib/event-sender.js'
 import { extractUsageFromTranscript, extractUsagePerTurn, detectSlashCommand, extractMessages, extractSummary } from './lib/transcript.js'
 import type { ExternalDeps } from './deps.js'
-import type { CreateProjectResponse } from '@argos/shared'
+import type { CreateProjectResponse, ExchangeResponse } from '@argos/shared'
 
 export const realDeps: ExternalDeps = {
   config: {
@@ -24,17 +24,35 @@ export const realDeps: ExternalDeps = {
     login: runLoginFlow,
   },
   api: {
+    async exchange(onboardToken: string, apiUrl: string): Promise<ExchangeResponse> {
+      return apiRequest<ExchangeResponse>(`${apiUrl}/api/auth/exchange`, {
+        method: 'POST',
+        body: JSON.stringify({ onboardToken }),
+        baseUrl: '',
+      })
+    },
     async createProject(name: string, token: string, apiUrl: string): Promise<CreateProjectResponse> {
       const orgsRes = await apiRequest<{ orgs: Array<{ id: string; name: string; slug: string; role: string }> }>(
         `${apiUrl}/api/orgs`,
         { method: 'GET', token, baseUrl: '' }
       )
 
+      let org: { id: string; name: string; slug: string }
       if (!orgsRes.orgs || orgsRes.orgs.length === 0) {
-        throw new Error('소속된 조직이 없습니다. 먼저 조직을 생성하세요.')
+        // 신규 유저: 첫 번째 프로젝트 생성 시 org를 프로젝트명과 동일하게 자동 생성
+        const createOrgRes = await apiRequest<{ org: { id: string; name: string; slug: string } }>(
+          `${apiUrl}/api/orgs`,
+          {
+            method: 'POST',
+            body: JSON.stringify({ name }),
+            token,
+            baseUrl: '',
+          }
+        )
+        org = createOrgRes.org
+      } else {
+        org = orgsRes.orgs[0]
       }
-
-      const org = orgsRes.orgs[0]
 
       const createRes = await apiRequest<{
         project: { id: string; orgId: string; slug: string; name: string }

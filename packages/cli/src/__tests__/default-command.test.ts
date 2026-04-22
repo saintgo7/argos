@@ -47,6 +47,7 @@ function makeMockDeps(overrides: Partial<ExternalDeps> = {}): ExternalDeps {
       login: vi.fn().mockResolvedValue(MOCK_LOGIN_RESPONSE),
     },
     api: {
+      exchange: vi.fn(),
       createProject: vi.fn().mockResolvedValue(MOCK_CREATE_PROJECT_RESPONSE),
       joinOrg: vi.fn().mockResolvedValue(undefined),
       ensureMembership: vi.fn().mockResolvedValue(undefined),

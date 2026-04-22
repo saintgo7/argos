@@ -1,6 +1,6 @@
 import type { Config } from './lib/config.js'
 import type { ProjectConfig } from './lib/project.js'
-import type { LoginResponse, CreateProjectResponse, IngestEventPayload, UsagePayload, UsagePerTurnPayload, MessagePayload } from '@argos/shared'
+import type { LoginResponse, ExchangeResponse, CreateProjectResponse, IngestEventPayload, UsagePayload, UsagePerTurnPayload, MessagePayload } from '@argos/shared'
 
 export interface ExternalDeps {
   config: {
@@ -16,6 +16,7 @@ export interface ExternalDeps {
     login(apiUrl: string): Promise<LoginResponse>
   }
   api: {
+    exchange(onboardToken: string, apiUrl: string): Promise<ExchangeResponse>
     createProject(name: string, token: string, apiUrl: string): Promise<CreateProjectResponse>
     joinOrg(orgSlug: string, token: string, apiUrl: string): Promise<void>
     ensureMembership(orgSlug: string, token: string, apiUrl: string): Promise<void>

@@ -4,18 +4,31 @@ import { useState } from 'react'
 import { signOut } from 'next-auth/react'
 import { PlusIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { CopyPromptButton } from '@/components/copy-prompt-button'
 import { CreateOrgModal } from '@/components/org/create-org-modal'
 
 interface NoOrganizationStateProps {
   email: string
+  onboardPrompt: string
+  onboardTokenExpiresAt: string
 }
 
-export function NoOrganizationState({ email }: NoOrganizationStateProps) {
+export function NoOrganizationState({
+  email,
+  onboardPrompt,
+  onboardTokenExpiresAt,
+}: NoOrganizationStateProps) {
   const [createOpen, setCreateOpen] = useState(false)
 
+  const expiresAt = new Date(onboardTokenExpiresAt)
+  const expiresAtLabel = expiresAt.toLocaleTimeString('ko-KR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="w-full max-w-lg space-y-6 rounded-xl bg-card p-8 ring-1 ring-foreground/10">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+      <div className="w-full max-w-2xl space-y-6 rounded-xl bg-card p-8 ring-1 ring-foreground/10">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Argos</h1>
@@ -32,19 +45,47 @@ export function NoOrganizationState({ email }: NoOrganizationStateProps) {
 
         <hr />
 
-        {/* Empty state message */}
-        <div className="space-y-1">
-          <h2 className="text-lg font-medium">아직 속한 조직이 없습니다</h2>
-          <p className="text-sm text-muted-foreground">
-            조직을 만들어 팀원들과 함께 Argos 로 토큰 사용량을 추적해보세요.
-            조직 안에서 여러 프로젝트를 만들고 관리할 수 있습니다.
+        {/* Primary: copyable prompt */}
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <h2 className="text-lg font-medium">
+              Claude Code에 붙여넣기만 하세요
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              아래 프롬프트를 복사해 설정할 프로젝트 폴더의 Claude Code 세션에
+              붙여넣으면, Argos가 조직·프로젝트·hook 설치까지 자동으로 끝냅니다.
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="text-xs text-muted-foreground">
+                토큰 만료: 오늘 {expiresAtLabel} · 1회만 사용 가능
+              </div>
+              <CopyPromptButton text={onboardPrompt} className="flex-shrink-0" />
+            </div>
+            <pre className="bg-background text-foreground/90 rounded-md px-3 py-2 text-xs font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto border border-border">
+              {onboardPrompt}
+            </pre>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            팀원은 저장소를 clone하고 Claude Code를 여는 순간 CLI가 자동
+            설치됩니다. 첫 세션에서 <code className="text-foreground">argos</code>
+            를 한 번 실행해 팀에 합류합니다.
           </p>
         </div>
 
-        <div>
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
+        <hr />
+
+        {/* Secondary: manual path */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="text-sm text-muted-foreground">
+            CLI 없이 먼저 조직만 만들고 싶다면?
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
             <PlusIcon />
-            조직 만들기
+            조직 수동 생성
           </Button>
         </div>
       </div>

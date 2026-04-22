@@ -36,11 +36,12 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  memberships  OrgMembership[]
-  cliTokens    CliToken[]
-  sessions     ClaudeSession[]
-  events       Event[]
-  usageRecords UsageRecord[]
+  memberships   OrgMembership[]
+  cliTokens     CliToken[]
+  onboardTokens OnboardToken[]
+  sessions      ClaudeSession[]
+  events        Event[]
+  usageRecords  UsageRecord[]
 
   @@map("users")
 }
@@ -81,6 +82,23 @@ model CliAuthRequest {
   createdAt DateTime  @default(now()) @map("created_at")
 
   @@map("cli_auth_requests")
+}
+
+// ─── OnboardToken ──────────────────────────────────────────────────────────
+// 가입 직후 "복사해서 Claude Code에 붙여넣는" 프롬프트에 포함되는 1회용 토큰.
+// 1시간 수명, 교환 성공 시 usedAt 마킹. scope은 setup 전용(구조상 argos setup에서만 호출).
+
+model OnboardToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  userId    String    @map("user_id")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("onboard_tokens")
 }
 
 // ─── CliToken ──────────────────────────────────────────────────────────────
