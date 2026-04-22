@@ -195,7 +195,7 @@ function OverviewContent({
           {usersLoading ? (
             <Skeleton className="h-40" />
           ) : (
-            <TopUsersList users={topUsers} projectId={projectId ?? ''} />
+            <TopUsersList users={topUsers} />
           )}
         </ChartCard>
 
@@ -206,7 +206,7 @@ function OverviewContent({
           {sessionsLoading ? (
             <Skeleton className="h-40" />
           ) : (
-            <RecentSessionsList sessions={recentSessions} projectId={projectId ?? ''} />
+            <RecentSessionsList sessions={recentSessions} orgSlug={orgSlug} />
           )}
         </ChartCard>
       </div>

@@ -1,15 +1,13 @@
 'use client'
 
-import Link from 'next/link'
 import { formatTokens, formatCost } from '@/lib/format'
 import type { UserStat } from '@argos/shared'
 
 interface TopUsersListProps {
   users: UserStat[]
-  projectId: string
 }
 
-export function TopUsersList({ users, projectId }: TopUsersListProps) {
+export function TopUsersList({ users }: TopUsersListProps) {
   if (users.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-6 text-center">
@@ -30,10 +28,7 @@ export function TopUsersList({ users, projectId }: TopUsersListProps) {
         const pct = maxTokens > 0 ? (total / maxTokens) * 100 : 0
         return (
           <li key={u.userId}>
-            <Link
-              href={`/dashboard/${projectId}/users/${u.userId}`}
-              className="block rounded-md hover:bg-muted/50 transition-colors px-2 py-2"
-            >
+            <div className="px-2 py-2">
               <div className="flex items-center gap-3">
                 <span className="w-5 shrink-0 text-xs font-semibold text-muted-foreground tabular-nums">
                   {i + 1}
@@ -58,7 +53,7 @@ export function TopUsersList({ users, projectId }: TopUsersListProps) {
                   </div>
                 </div>
               </div>
-            </Link>
+            </div>
           </li>
         )
       })}

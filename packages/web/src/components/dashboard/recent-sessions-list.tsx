@@ -6,10 +6,10 @@ import type { SessionItem } from '@argos/shared'
 
 interface RecentSessionsListProps {
   sessions: SessionItem[]
-  projectId: string
+  orgSlug: string
 }
 
-export function RecentSessionsList({ sessions, projectId }: RecentSessionsListProps) {
+export function RecentSessionsList({ sessions, orgSlug }: RecentSessionsListProps) {
   if (sessions.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-6 text-center">
@@ -25,7 +25,7 @@ export function RecentSessionsList({ sessions, projectId }: RecentSessionsListPr
         return (
           <li key={s.id}>
             <Link
-              href={`/dashboard/${projectId}/sessions/${s.id}`}
+              href={`/dashboard/${orgSlug}/sessions/${s.id}`}
               className="block rounded-md hover:bg-muted/50 transition-colors px-2 py-2"
             >
               <div className="flex items-baseline justify-between gap-3 mb-0.5">
