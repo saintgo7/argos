@@ -11,7 +11,7 @@ import {
   SessionFilesTab,
 } from '@/components/dashboard/session-files'
 import { useSessionDetail } from '@/hooks/use-dashboard-sessions'
-import { messagesToTimeline } from '@/lib/timeline-events'
+import { messagesToTimeline, formatSlashCommandText } from '@/lib/timeline-events'
 import { extractSessionFiles } from '@/lib/session-files'
 import {
   formatTokens,
@@ -122,6 +122,7 @@ export default function OrgSessionDetailPage({
 
   const truncatedId =
     data.id.length > 12 ? `${data.id.slice(0, 12)}…` : data.id
+  const displayTitle = data.title ? formatSlashCommandText(data.title) : null
   const duration = formatDuration(data.startedAt, data.endedAt)
   const relative = formatRelativeTime(data.startedAt)
 
@@ -140,9 +141,9 @@ export default function OrgSessionDetailPage({
             </Button>
             <div className="min-w-0">
               <h1 className="text-lg font-semibold truncate">
-                {data.title ?? <span className="text-muted-foreground">Session {truncatedId}</span>}
+                {displayTitle ?? <span className="text-muted-foreground">Session {truncatedId}</span>}
               </h1>
-              {data.title && (
+              {displayTitle && (
                 <p className="text-xs text-muted-foreground font-mono">Session {truncatedId}</p>
               )}
             </div>

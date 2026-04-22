@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useRef, type CSSProperties } from 'react'
 import {
-  SLASH_COMMAND_TAG_RE,
+  formatSlashCommandText,
   buildTimelineGroups,
   type TimelineEvent,
 } from '@/lib/timeline-events'
@@ -52,11 +52,7 @@ function EventTooltipBody({
   const elapsed = formatRelativeTime(event.timestamp, sessionStartedAt)
 
   if (event.kind === 'message' && event.role === 'HUMAN') {
-    const preview = event.content
-      .replace(SLASH_COMMAND_TAG_RE, (_, name) => `/${name}`)
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 120)
+    const preview = formatSlashCommandText(event.content).slice(0, 120)
     return (
       <>
         <p className="font-medium">User</p>

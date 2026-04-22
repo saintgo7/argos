@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { List, type RowComponentProps } from "react-window";
 import { User, Bot, Wrench, ChevronRight } from "lucide-react";
 import {
-  SLASH_COMMAND_TAG_RE,
+  formatSlashCommandText,
   buildTimelineGroups,
   type TimelineEvent,
 } from "@/lib/timeline-events";
@@ -119,12 +119,8 @@ function getSingleLabel(event: TimelineEvent): string {
 
 function getSinglePreview(event: TimelineEvent): string {
   if (event.kind === "message") {
-    const normalized = event.content.replace(
-      SLASH_COMMAND_TAG_RE,
-      (_, name) => `/${name}`,
-    );
-    const stripped = normalized.replace(/\s+/g, " ").trim();
-    return stripped.slice(0, 80);
+    const normalized = formatSlashCommandText(event.content);
+    return normalized.slice(0, 80);
   }
   if (event.isSkillCall && event.skillName) return `Skill: ${event.skillName}`;
   if (event.isAgentCall && event.agentType) return `Agent: ${event.agentType}`;

@@ -1,4 +1,5 @@
 import type { SessionDetail } from '@argos/shared'
+export { formatSlashCommandText } from './slash-command'
 
 export type MessageEvent = {
   kind: 'message'

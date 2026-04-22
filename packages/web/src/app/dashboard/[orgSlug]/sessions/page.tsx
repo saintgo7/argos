@@ -11,6 +11,7 @@ import {
   type SessionSort,
 } from '@/hooks/use-dashboard-sessions'
 import { formatTokens, formatCost, formatDateTimeFull } from '@/lib/format'
+import { formatSlashCommandText } from '@/lib/timeline-events'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -251,7 +252,11 @@ function SessionsContent({
                     )}
                     <td className="py-3 px-4 max-w-md">
                       <div className="truncate">
-                        {session.title ?? <span className="text-muted-foreground">—</span>}
+                        {session.title ? (
+                          formatSlashCommandText(session.title)
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </div>
                     </td>
                     <td className="text-right py-3 px-4 whitespace-nowrap tabular-nums">{formatTokens(session.inputTokens)}</td>
@@ -317,7 +322,7 @@ function SessionsContent({
             <AlertDialogTitle>세션을 삭제하시겠습니까?</AlertDialogTitle>
             <AlertDialogDescription>
               {sessionToDelete?.title
-                ? `"${sessionToDelete.title}" 세션과`
+                ? `"${formatSlashCommandText(sessionToDelete.title)}" 세션과`
                 : '이 세션과'}{' '}
               연관된 모든 메시지·사용량·이벤트가 함께 삭제됩니다. 이 작업은
               되돌릴 수 없습니다.
