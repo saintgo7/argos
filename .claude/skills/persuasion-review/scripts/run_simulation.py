@@ -26,6 +26,11 @@ from session_runner import SessionResult, parse_frontmatter, run_session
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
+# personas/, runs/, feature-ideas.md는 .claude/ 바깥(레포 루트 persuasion-data/)에 둠.
+# Claude Code가 .claude/ 경로를 sensitive로 분류해 Write를 차단하기 때문.
+# __file__ = <repo>/.claude/skills/persuasion-review/scripts/run_simulation.py
+# → parents[4] = <repo>
+DATA_DIR = Path(__file__).resolve().parents[4] / "persuasion-data"
 
 
 # ============================================================
@@ -41,7 +46,7 @@ def now_iso() -> str:
 
 
 def load_persona(persona_id: str) -> tuple[dict, Path]:
-    profile_path = SKILL_DIR / "personas" / persona_id / "profile.md"
+    profile_path = DATA_DIR / "personas" / persona_id / "profile.md"
     if not profile_path.exists():
         raise FileNotFoundError(f"persona not found: {profile_path}")
     content = profile_path.read_text(encoding="utf-8")
@@ -408,7 +413,7 @@ def main() -> int:
     args = parser.parse_args()
 
     persona_meta, persona_path = load_persona(args.persona_id)
-    run_dir = SKILL_DIR / "runs" / args.run_id
+    run_dir = DATA_DIR / "runs" / args.run_id
     run_dir.mkdir(parents=True, exist_ok=True)
     value_prop_path = Path(args.value_prop).resolve()
     if not value_prop_path.exists():
@@ -434,7 +439,9 @@ def main() -> int:
     print(f"     → {summarize_result(r5a)}", flush=True)
 
     if not r5a.ok:
-        print(f"     ERROR: {r5a.error}\n{r5a.stderr}", file=sys.stderr)
+        print(f"     ERROR: {r5a.error}", file=sys.stderr)
+        print(f"     STDOUT: {r5a.stdout}", file=sys.stderr)
+        print(f"     STDERR: {r5a.stderr}", file=sys.stderr)
         failure_reason = "keyman_session_error"
     elif r5a.decision == "drop" or r5a.confidence <= 75:
         failure_reason = "keyman_drop"

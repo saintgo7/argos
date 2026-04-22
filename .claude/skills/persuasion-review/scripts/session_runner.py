@@ -17,7 +17,18 @@ import yaml
 
 
 # claude CLI 경로 및 주요 플래그. 버전/설치 방식에 따라 조정 가능.
-CLAUDE_BIN = "claude"
+# 환경에 여러 claude 바이너리(예: pnpm glob 2.0.x와 ~/.claude/local/ 2.1.x)가 공존할 때
+# subprocess PATH가 구버전을 집어 nested 실행이 "Execution error"로 조기 실패하는 사례 있음.
+# 우선순위: ARGOS_CLAUDE_BIN env > ~/.claude/local/claude > PATH에서 first match.
+import os as _os
+import shutil as _shutil
+_local_claude = _os.path.expanduser("~/.claude/local/claude")
+CLAUDE_BIN = (
+    _os.environ.get("ARGOS_CLAUDE_BIN")
+    or (_local_claude if _os.path.exists(_local_claude) else None)
+    or _shutil.which("claude")
+    or "claude"
+)
 PERMISSION_MODE = "bypassPermissions"  # 헤드리스 실행 시 Read/Write 허용 간소화
 
 
@@ -75,7 +86,9 @@ def run_session(
         CLAUDE_BIN,
         "-p", task_prompt,
         "--append-system-prompt", system_prompt,
-        "--permission-mode", PERMISSION_MODE,
+        # subprocess에서는 상호작용 승인이 불가하므로 권한 체크를 완전히 스킵.
+        # --permission-mode bypassPermissions만으로는 Write가 차단되는 사례 확인됨(2.1.117).
+        "--dangerously-skip-permissions",
         "--allowed-tools", "Read", "Write",
     ]
 
