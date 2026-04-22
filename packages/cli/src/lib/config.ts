@@ -2,15 +2,33 @@ import { homedir } from 'os'
 import { join } from 'path'
 import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from 'fs'
 
+export const DEFAULT_API_URL = 'https://www.argos-ai.xyz'
+
 export interface Config {
   token: string
-  apiUrl: string
+  apiUrl?: string
   userId: string
   email: string
 }
 
 export function getConfigPath(): string {
   return join(homedir(), '.argos', 'config.json')
+}
+
+/**
+ * Returns a custom override URL, or undefined if the URL is empty, malformed,
+ * or points at the default Argos service (any *argos-ai.xyz host). Callers that
+ * need a guaranteed URL should fall back to DEFAULT_API_URL with `?? DEFAULT_API_URL`.
+ */
+export function normalizeApiUrl(url: string | undefined | null): string | undefined {
+  if (!url) return undefined
+  try {
+    const host = new URL(url).hostname
+    if (host === 'argos-ai.xyz' || host.endsWith('.argos-ai.xyz')) return undefined
+    return url
+  } catch {
+    return undefined
+  }
 }
 
 export function readConfig(): Config | null {
@@ -20,7 +38,14 @@ export function readConfig(): Config | null {
       return null
     }
     const content = readFileSync(configPath, 'utf8')
-    return JSON.parse(content) as Config
+    const parsed = JSON.parse(content) as Config
+    const normalized = normalizeApiUrl(parsed.apiUrl)
+    if (normalized) {
+      parsed.apiUrl = normalized
+    } else {
+      delete parsed.apiUrl
+    }
+    return parsed
   } catch {
     return null
   }

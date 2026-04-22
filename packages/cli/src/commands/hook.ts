@@ -3,6 +3,7 @@ import { appendFileSync, existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import type { IngestEventPayload, EventType } from '@argos/shared'
 import type { CommandFactory } from '../deps.js'
+import { DEFAULT_API_URL } from '../lib/config.js'
 
 interface HookStdinPayload {
   hook_event_name?: string
@@ -95,7 +96,7 @@ export function convertEventType(hookEventName: string): string {
  */
 export function buildPayload(
   event: HookStdinPayload,
-  project: { projectId: string; apiUrl: string }
+  project: { projectId: string; apiUrl?: string }
 ): IngestEventPayload {
   const payload: IngestEventPayload = {
     projectId: project.projectId,
@@ -226,7 +227,7 @@ export const makeHookCommand: CommandFactory =
 
       // Fire-and-forget: spawn a detached background process to send the event.
       // The main process exits immediately (exit 0), so Claude Code is never blocked.
-      const apiUrl = project.apiUrl || config.apiUrl
+      const apiUrl = project.apiUrl ?? config.apiUrl ?? DEFAULT_API_URL
       deps.events.sendBackground(`${apiUrl}/api/events`, config.token, payload)
     } catch (err) {
       debugLog(err)

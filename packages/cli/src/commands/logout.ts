@@ -1,6 +1,7 @@
 import chalk from 'chalk'
 import ora from 'ora'
 import type { CommandFactory } from '../deps.js'
+import { DEFAULT_API_URL } from '../lib/config.js'
 
 /**
  * Logout command - revoke token and delete local config
@@ -18,7 +19,7 @@ export const makeLogoutCommand: CommandFactory =
 
     try {
       // Try to revoke token on server
-      await deps.api.revokeToken(config.token, config.apiUrl)
+      await deps.api.revokeToken(config.token, config.apiUrl ?? DEFAULT_API_URL)
     } catch {
       // Ignore API errors - still delete local config
       spinner.warn(chalk.yellow('서버에서 토큰을 취소하는데 실패했지만 로컬 설정은 삭제됩니다.'))
