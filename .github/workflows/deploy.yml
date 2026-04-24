@@ -143,32 +143,43 @@ jobs:
           command_timeout: 15m
           script: |
             set -e
-            DEPLOY_DIR="/data/argos"
+            DEPLOY_DIR="/data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr"
             LOG_DIR="$DEPLOY_DIR/logs"
             LOG_FILE="$LOG_DIR/deploy-$(date +%Y%m%d-%H%M%S).log"
-            COMPOSE="docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml"
+            COMPOSE="docker compose --env-file .env -f docker-compose.prod.yml"
+            SHA_SHORT="${GITHUB_SHA::7}"
             mkdir -p "$LOG_DIR"
 
             exec > >(tee -a "$LOG_FILE") 2>&1
 
             echo "=== argos Deploy ==="
             echo "Time: $(date)"
+            echo "SHA: $SHA_SHORT"
 
             cd "$DEPLOY_DIR"
 
-            # 1. Sync latest compose files from GitHub
+            # 1. Sync compose + nginx from the committed branch in src/.
             echo "[1/6] Syncing config files..."
-            git -c user.email="deploy@github" -c user.name="deploy" \
-              fetch -q "https://oauth2:${GHCR_TOKEN}@github.com/saintgo7/argos.git" main
-            git checkout -f FETCH_HEAD -- docker-compose.yml docker-compose.prod.yml
+            git -C src fetch -q origin main
+            git -C src checkout -f origin/main
+            cp src/docker-compose.prod.yml ./docker-compose.prod.yml
+            mkdir -p nginx
+            cp src/nginx/nginx.conf ./nginx/nginx.conf
 
             # 2. Backup current image for rollback
             echo "[2/6] Backing up current image..."
             docker tag ghcr.io/saintgo7/argos-web:latest ghcr.io/saintgo7/argos-web:backup 2>/dev/null || true
 
-            # 3. Pull new image
+            # 3. Pull the new image. The short SHA tag is written to .env so any
+            #    `$COMPOSE` invocation on this host resolves ${TAG} to the exact
+            #    image that CI just pushed.
             echo "[3/6] Pulling GHCR image..."
             echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+            if grep -q '^TAG=' .env; then
+              sed -i "s|^TAG=.*|TAG=$SHA_SHORT|" .env
+            else
+              echo "TAG=$SHA_SHORT" >> .env
+            fi
             $COMPOSE pull web
 
             # 4. Restart containers
@@ -180,11 +191,11 @@ jobs:
             echo "[5/6] Running Prisma migrations..."
             $COMPOSE exec -T web npx prisma migrate deploy --schema packages/web/prisma/schema.prisma
 
-            # 6. Health check with auto-rollback
+            # 6. Health check with auto-rollback (via nginx port 10350)
             echo "[6/6] Health check..."
             HEALTHY=false
             for i in $(seq 1 12); do
-              if curl -fsS http://127.0.0.1:10280/api/health >/dev/null 2>&1; then
+              if curl -fsS http://127.0.0.1:10350/health >/dev/null 2>&1; then
                 echo "Health check passed (attempt $i/12)"
                 HEALTHY=true
                 break
@@ -196,6 +207,7 @@ jobs:
             if [ "$HEALTHY" = "false" ]; then
               echo "HEALTH CHECK FAILED - Rolling back..."
               docker tag ghcr.io/saintgo7/argos-web:backup ghcr.io/saintgo7/argos-web:latest 2>/dev/null || true
+              sed -i 's|^TAG=.*|TAG=latest|' .env
               $COMPOSE up -d --remove-orphans
               echo "Rollback complete. Check logs: $LOG_FILE"
               exit 1
@@ -203,7 +215,7 @@ jobs:
 
             echo ""
             echo "=== Deploy complete ==="
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+            $COMPOSE ps
             echo "Log: $LOG_FILE"
 
             # Keep last 30 deploy logs

@@ -1,87 +1,127 @@
 # Argos Self-Host Deployment
 
-> **Target**: `argos.abada.co.kr` — runs on abada-int-65 (172.16.129.65), port 10280, behind Cloudflare Tunnel.
-> **Pattern**: abada Tier A (GHCR + SSH + Cloudflare Tunnel). Same recipe as abada-shop.
+> **Target**: `argos.abada.co.kr` — runs on abada-65, port 10350, behind Cloudflare Tunnel.
+> **Pattern**: abada-65 convention — nginx entrypoint, bind-mounted data, single `docker-compose.prod.yml`.
 
 ## Architecture
 
 ```
-┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│  Cloudflare      │     │  abada-int-65    │     │  GHCR            │
-│  Tunnel          │────▶│  Docker Compose  │◀────│  argos-web:latest│
-│  argos.abada.    │     │  web : 10280     │     │                  │
-│  co.kr           │     │  postgres (int.) │     └──────────────────┘
-└──────────────────┘     └──────────────────┘
+ Cloudflare Tunnel (05-dev-ext)
+         │
+         ▼
+ 127.0.0.1:10350  ←  bound by argos-nginx on abada-65
+         │
+         ▼    argos-net (bridge)
+ ┌──────────────┐     ┌──────────────┐
+ │  argos-web   │────▶│ argos-       │
+ │  Next.js 15  │     │ postgres     │
+ │  port 3000   │     │ (bind-mount) │
+ └──────────────┘     └──────────────┘
 ```
 
-- `web` — Next.js 15 app, binds host port 10280, connects to internal `postgres` service
-- `postgres` — PostgreSQL 16, internal-only (no host port), named volume `postgres_data`
-- Prisma migrations run via `docker compose exec web npx prisma migrate deploy` (idempotent)
-- Cloudflare Tunnel ingress: `argos.abada.co.kr` → `http://localhost:10280`
+- `nginx` — Cloudflare Tunnel entrypoint, bound to `127.0.0.1:10350` only
+- `web` — Next.js 15 app (includes API routes), internal port 3000
+- `postgres` — PostgreSQL 16, bind-mounted at `./data/pgdata`
+- No named docker volumes — data lives on the `/data` LVM for easy `tar`/`rsync` backup
+
+## Server layout (abada-65)
+
+```
+/data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr/
+├── .env                          # secrets (chmod 600, not tracked)
+├── docker-compose.prod.yml       # synced from repo by deploy workflow
+├── nginx/
+│   └── nginx.conf                # synced from repo by deploy workflow
+├── data/
+│   └── pgdata/                   # PostgreSQL data (bind-mount)
+├── logs/                         # deploy logs (rotated, keep 30)
+└── src/                          # git clone of saintgo7/argos (read-only source)
+```
 
 ---
 
 ## Initial Server Setup (one time)
 
-### 1. Prerequisites on abada-int-65
+### 1. Prerequisites on abada-65
 
 - Docker + Docker Compose v2 installed
 - `cloudflared` tunnel `05-dev-ext` running (shared with other abada services)
-- Deploy user has `docker` group access
-- `/data` partition exists
+- User `blackpc` with `docker` group access
+- `/data` LVM mounted
 
-### 2. Clone the repo
+### 2. Create the directory tree
 
 ```bash
-sudo mkdir -p /data/argos
-sudo chown "$USER:$USER" /data/argos
-cd /data && git clone https://github.com/saintgo7/argos.git
-cd /data/argos
-# Pull deploy files from the deploy/abada-selfhost branch
-git fetch origin
-git checkout main  # main is synced with saintgo7/argos default (post-merge)
+# SSH to abada-65 then:
+mkdir -p /data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr
+cd /data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr
+mkdir -p data/pgdata nginx logs src
 ```
 
-### 3. Create `.env.production`
+### 3. Clone the repo into src/
 
 ```bash
-cp .env.production.example .env.production
+cd /data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr
+git clone https://github.com/saintgo7/argos.git src
+# Pre-merge: stay on the deploy branch so compose files exist
+git -C src checkout deploy/abada-selfhost
+```
+
+After the PR is merged to main, the deploy workflow will auto `git -C src checkout -f origin/main`.
+
+### 4. Copy compose + nginx from src/ to the service root
+
+```bash
+cd /data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr
+cp src/docker-compose.prod.yml .
+cp src/nginx/nginx.conf nginx/
+```
+
+### 5. Create `.env` (chmod 600)
+
+```bash
+cd /data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr
+cp src/.env.example .env
 
 # Generate strong secrets
-openssl rand -hex 32        # use for AUTH_SECRET
-openssl rand -hex 32        # use for JWT_SECRET
-openssl rand -hex 32        # use for POSTGRES_PASSWORD
+POSTGRES_PW=$(openssl rand -hex 32)
+AUTH=$(openssl rand -hex 32)
+JWT=$(openssl rand -hex 32)
 
-# Edit .env.production and paste the values
-chmod 600 .env.production   # restrict to owner
+# Substitute (verify the file after)
+sed -i "s|CHANGE_ME_GENERATE_WITH_openssl_rand_-hex_32|$POSTGRES_PW|" .env
+sed -i "s|CHANGE_ME_SAME_AS_POSTGRES_PASSWORD|$POSTGRES_PW|g" .env
+sed -i "s|CHANGE_ME_32_CHAR_RANDOM_STRING_HERE_____________________|$AUTH|" .env
+sed -i "s|CHANGE_ME_32_CHAR_RANDOM_STRING_HERE______________________|$JWT|" .env
+
+chmod 600 .env
 ```
 
-**Important**: the same password must appear in `POSTGRES_PASSWORD`, `DATABASE_URL`, and `DIRECT_URL`.
-
-### 4. Bring up PostgreSQL first
+### 6. First boot (postgres + web)
 
 ```bash
-COMPOSE="docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml"
+COMPOSE="docker compose --env-file .env -f docker-compose.prod.yml"
 
+# Bring up postgres first (other services depend on it being healthy)
 $COMPOSE up -d postgres
-$COMPOSE ps postgres          # wait for "healthy"
-```
+$COMPOSE ps postgres       # wait for "healthy"
 
-### 5. Bring up web + run migrations
-
-```bash
-# First pull the image from GHCR (after CI has pushed it at least once)
-echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_USER" --password-stdin
+# Log in to GHCR (needed to pull the web image)
+echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_USERNAME" --password-stdin
 $COMPOSE pull web
 
-$COMPOSE up -d web
-# Wait ~30s for Next.js to boot, then:
+# Bring up nginx + web
+$COMPOSE up -d
+
+# Wait ~40s, then run Prisma migrations against the empty DB
 $COMPOSE exec -T web npx prisma migrate deploy --schema packages/web/prisma/schema.prisma
-$COMPOSE ps
-curl -fsS http://127.0.0.1:10280/api/health    # expect {"status":"ok"}
+
+$COMPOSE ps                                 # all services healthy
+curl -fsS http://127.0.0.1:10350/health     # "ok" (from nginx)
+curl -fsS http://127.0.0.1:10350/api/health # {"status":"ok"} (from Next.js via nginx)
 ```
 
-### 6. Cloudflare Tunnel ingress
+### 7. Cloudflare Tunnel ingress
 
 Cloudflare Dashboard → Zero Trust → Networks → Tunnels → `05-dev-ext` → Public Hostnames → Add:
 
@@ -89,24 +129,24 @@ Cloudflare Dashboard → Zero Trust → Networks → Tunnels → `05-dev-ext` �
 - Domain: `abada.co.kr`
 - Path: (leave blank)
 - Service Type: `HTTP`
-- URL: `localhost:10280`
+- URL: `localhost:10350`
 
-Then verify:
+Verify:
 
 ```bash
 dig argos.abada.co.kr
 curl -fsS https://argos.abada.co.kr/api/health
 ```
 
-### 7. GitHub secrets (saintgo7/argos repo → Settings → Secrets → Actions)
+### 8. GitHub repo secrets (saintgo7/argos → Settings → Secrets → Actions)
 
-Same set as `saas-abada-shop` (values reusable — same server):
+Reusable from `saintgo7/saas-abada-shop` (same server):
 
-| Secret | Value |
+| Secret | Notes |
 |---|---|
-| `ABADA_SSH_HOST` | abada-int-65 IP |
-| `ABADA_SSH_PORT` | 5022 |
-| `ABADA_SSH_USER` | deploy user |
+| `ABADA_SSH_HOST` | abada-65 IP via bastion |
+| `ABADA_SSH_PORT` | 5022 (default) |
+| `ABADA_SSH_USER` | `blackpc` |
 | `ABADA_SSH_KEY` | private key |
 | `BASTION_SSH_HOST` | bastion IP |
 | `BASTION_SSH_PORT` | 5022 |
@@ -124,9 +164,14 @@ Every push to `main` triggers `.github/workflows/deploy.yml`:
 
 1. Lint (`pnpm -F @argos/web lint`) + test (`pnpm -F argos-ai test`)
 2. Build Docker image → push to `ghcr.io/saintgo7/argos-web:latest` + `:<sha>`
-3. SSH to `/data/argos` → `git fetch` → `compose pull web` → `compose up -d` → `prisma migrate deploy`
-4. Health check (12 × 10s) against `http://127.0.0.1:10280/api/health`
-5. On failure: re-tag `backup` → `latest` and recompose (automatic rollback)
+3. SSH to abada-65 → `/data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr` →
+   - `git -C src fetch/checkout origin/main`
+   - Copy `docker-compose.prod.yml` + `nginx/nginx.conf` from src
+   - Rewrite `TAG=<sha>` in `.env` (atomic tag pin)
+   - `docker compose pull web` + `up -d`
+   - `prisma migrate deploy`
+4. Health check (12 × 10s) against `http://127.0.0.1:10350/health`
+5. On failure: retag `:backup` → `:latest`, reset `TAG=latest`, recompose
 
 ---
 
@@ -154,42 +199,44 @@ Then commit `.argos/project.json` + `.claude/settings.json` so teammates auto-jo
 ### Logs
 
 ```bash
-cd /data/argos
-docker compose logs -f web
-docker compose logs -f postgres
+cd /data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr
+docker compose -f docker-compose.prod.yml logs -f web
+docker compose -f docker-compose.prod.yml logs -f postgres
+docker compose -f docker-compose.prod.yml logs -f nginx
 ls -lh logs/           # deploy.log archive (last 30 runs)
 ```
 
 ### Manual migration
 
 ```bash
-cd /data/argos
-COMPOSE="docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml"
+cd /data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr
+COMPOSE="docker compose --env-file .env -f docker-compose.prod.yml"
 $COMPOSE exec -T web npx prisma migrate deploy --schema packages/web/prisma/schema.prisma
 ```
 
 ### Manual rollback
 
 ```bash
-cd /data/argos
+cd /data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr
 docker tag ghcr.io/saintgo7/argos-web:backup ghcr.io/saintgo7/argos-web:latest
-docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
+sed -i 's|^TAG=.*|TAG=latest|' .env
+docker compose --env-file .env -f docker-compose.prod.yml up -d --remove-orphans
 ```
 
-Or rollback to a specific SHA:
+Or pin to a specific SHA:
 
 ```bash
 docker pull ghcr.io/saintgo7/argos-web:<sha>
-docker tag  ghcr.io/saintgo7/argos-web:<sha> ghcr.io/saintgo7/argos-web:latest
-docker compose ... up -d
+sed -i "s|^TAG=.*|TAG=<sha>|" .env
+docker compose --env-file .env -f docker-compose.prod.yml up -d
 ```
 
 ### Postgres backup
 
 ```bash
-cd /data/argos
+cd /data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr
 mkdir -p backups
-docker compose exec -T postgres \
+docker compose -f docker-compose.prod.yml exec -T postgres \
   pg_dump -U argos argos | gzip > "backups/argos-$(date +%Y%m%d-%H%M%S).sql.gz"
 ```
 
@@ -197,15 +244,15 @@ Restore:
 
 ```bash
 gunzip -c backups/argos-YYYYMMDD-HHMMSS.sql.gz | \
-  docker compose exec -T postgres psql -U argos -d argos
+  docker compose -f docker-compose.prod.yml exec -T postgres psql -U argos -d argos
 ```
 
-### Data volume name
+### Data volume
 
-`argos_postgres_data` (docker-compose auto-prefixed with project dir name). To confirm:
+Bind-mounted — inspect directly:
 
 ```bash
-docker volume ls | grep argos
+sudo du -sh /data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr/data/pgdata
 ```
 
 ---
@@ -214,8 +261,10 @@ docker volume ls | grep argos
 
 | Symptom | Check |
 |---|---|
-| 502 at argos.abada.co.kr | `docker compose ps web` healthy? Tunnel running? |
+| 502 at argos.abada.co.kr | `docker compose -f docker-compose.prod.yml ps` — all healthy? Tunnel running? |
+| nginx up but /api/health 502 | web container healthy? `docker compose logs web` |
 | Migration P3009 (failed migration) | `$COMPOSE exec -T web npx prisma migrate resolve --rolled-back <name> --schema packages/web/prisma/schema.prisma` then retry |
 | `AUTH_SECRET` too short error | regenerate with `openssl rand -hex 32` (64 hex chars = 32 bytes) |
 | CLI redirects to `argos-ai.xyz` | check `.argos/project.json` `apiUrl`; run `argos --api-url https://argos.abada.co.kr` once |
-| `docker login ghcr.io` fails on server | GITHUB_TOKEN expired — regenerate a PAT with `read:packages` and re-run |
+| `docker login ghcr.io` fails on server | GHCR token expired — generate a PAT with `read:packages` and re-run |
+| Port 10350 conflict | `ss -tlnp \| grep 10350` to see who's using it |

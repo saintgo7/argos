@@ -7,7 +7,7 @@ dist/
 .env.local
 .env.production
 .env.*.local
-!.env.production.example
+!.env.example
 .turbo
 .vercel
 backups/
