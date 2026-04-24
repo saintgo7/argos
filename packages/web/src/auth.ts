@@ -1,5 +1,6 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
+import { loginUser } from '@/lib/server/auth-actions'
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -15,12 +16,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null
         }
 
-        // Edge 런타임에서 평가되지 않도록 dynamic import 사용.
-        // middleware는 authorize를 호출하지 않으므로 bcrypt/Prisma가 Edge 번들에 포함되지 않는다.
-        // 변수를 통한 import로 tsc(NodeNext)와 webpack(path alias) 양쪽 모두 호환되게 한다.
-        const modulePath = '@/lib/server/auth-actions'
-        const mod: typeof import('./lib/server/auth-actions') = await import(modulePath)
-        const result = await mod.loginUser({ email, password })
+        // middleware.ts가 node runtime으로 설정돼 있으므로 bcrypt/Prisma를
+        // 그대로 eager import할 수 있다. 과거에 쓰던 dynamic-variable-import
+        // 트릭은 standalone build에서 webpack이 모듈을 트레이싱하지 못해
+        // 런타임에 "Cannot find module" 에러가 났다.
+        const result = await loginUser({ email, password })
         if (!result) return null
 
         const { token, user } = result
