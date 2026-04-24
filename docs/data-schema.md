@@ -363,6 +363,63 @@ await prisma.event.groupBy({
 })
 ```
 
+### Skills/Agents — userCount + medianDurationMs (methodology 페이지 참조)
+
+#### userCount
+
+`events` 테이블에서 `is_skill_call=true`(또는 `is_agent_call=true`) + `skill_name`(또는 `agent_type`) 그룹별로 `COUNT(DISTINCT user_id)`를 계산한다. **events 기준 집계를 일관되게 사용**한다 — messages 기준과 혼용하면 같은 호출을 다르게 카운팅할 수 있어 일관성 문제가 발생한다.
+
+#### medianDurationMs
+
+`messages` 테이블의 `role='TOOL' AND tool_name IN ('Skill','Agent') AND duration_ms IS NOT NULL` 행에 대해, `tool_input->>'skill'` 또는 `tool_input->>'subagent_type'`으로 그룹화해 `percentile_cont(0.5) WITHIN GROUP (ORDER BY duration_ms)`로 중앙값을 계산한다.
+
+**샘플 수 임계값**: duration 기록 행 수가 3 미만이면 API에서 `null`로 반환한다. 통계 유의미성이 아닌 "매우 빈약한 데이터 숨김" 휴리스틱이다.
+
+**messages의 project_id 필터링**: messages 테이블은 project_id 컬럼을 갖지 않는다. `claude_sessions s ON s.id = m.session_id` 로 join해 `s.project_id = ANY($projectIds)`로 필터링한다.
+
+**timing 주의**: messages.duration_ms는 Stop 이벤트에서 transcript 기반으로 재빌드되므로, 진행 중인 세션의 tool call은 집계에 포함되지 않을 수 있다. 세션 종료 후 반영된다.
+
+**successRate를 채택하지 않은 이유**: Claude Code hook이 Skill/Agent 도구에 대해 PostToolUse를 발사하지 않고 exit_code를 제공하지 않음을 2026-04-24 프로덕션 실측으로 확인(`packages/web/src/app/api/events/route.ts`의 수신 루트는 정상). 향후 Claude Code가 해당 페이로드를 제공하기 시작하면 재도입 검토.
+
+```sql
+-- Skills 집계 (Agents도 동일 패턴, is_skill_call → is_agent_call, skill_name → agent_type)
+WITH skill_events AS (
+  SELECT
+    skill_name,
+    COUNT(*)                            AS call_count,
+    COUNT(DISTINCT session_id)          AS session_count,
+    COUNT(DISTINCT user_id)             AS user_count,
+    MAX(timestamp)                      AS last_used_at
+  FROM events
+  WHERE project_id = ANY($1::text[])
+    AND is_skill_call = true
+    AND skill_name IS NOT NULL
+    AND timestamp BETWEEN $2 AND $3
+  GROUP BY skill_name
+),
+skill_durations AS (
+  SELECT
+    m.tool_input->>'skill'                                          AS skill_name,
+    COUNT(m.duration_ms)                                            AS duration_sample_count,
+    percentile_cont(0.5) WITHIN GROUP (ORDER BY m.duration_ms)      AS median_duration_ms
+  FROM messages m
+  JOIN claude_sessions s ON s.id = m.session_id
+  WHERE s.project_id = ANY($1::text[])
+    AND m.role = 'TOOL'
+    AND m.tool_name = 'Skill'
+    AND m.duration_ms IS NOT NULL
+    AND m.timestamp BETWEEN $2 AND $3
+  GROUP BY m.tool_input->>'skill'
+)
+SELECT
+  e.skill_name, e.call_count, e.session_count, e.user_count, e.last_used_at,
+  CASE WHEN d.duration_sample_count >= 3 THEN d.median_duration_ms ELSE NULL END AS median_duration_ms
+FROM skill_events e
+LEFT JOIN skill_durations d USING (skill_name)
+ORDER BY e.call_count DESC
+LIMIT 50;
+```
+
 ### 프로젝트 요약 (병렬 실행)
 ```typescript
 const [sessionCount, usageTotals, activeUserCount, topSkills, topAgents] =

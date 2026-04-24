@@ -23,4 +23,6 @@
 - Hook 이벤트 페이로드: `packages/cli/src/hooks/` 및 수신측 `packages/web/src/app/api/events/`.
 - 웹 API 라우트: `packages/web/src/app/api/**/route.ts`.
 
+- 대시보드 지표의 공학적 정의: `packages/web/src/app/docs/metrics-methodology/page.tsx` 가 단일 진실 원천. tooltip·티켓 설명과의 drift 방지용.
+
 스펙과 코드가 어긋나면 **코드가 맞다**. 문서를 맞춰 고쳐라.
