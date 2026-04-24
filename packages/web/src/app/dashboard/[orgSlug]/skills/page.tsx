@@ -8,10 +8,11 @@ import { RankedBarChart } from '@/components/dashboard/ranked-bar-chart'
 import { ChartCard } from '@/components/dashboard/chart-card'
 import { KpiCard } from '@/components/dashboard/kpi-card'
 import { useDashboardSkills } from '@/hooks/use-dashboard-skills'
-import { formatDateTimeFull, formatLastUsed } from '@/lib/format'
+import { formatDateTimeFull, formatLastUsed, formatDurationMs } from '@/lib/format'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 
 function SkillsContent({
   orgSlug,
@@ -136,6 +137,18 @@ function SkillsContent({
                 <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Skill</th>
                 <th className="text-right py-3 px-4 font-medium whitespace-nowrap">Invocations</th>
                 <th className="text-right py-3 px-4 font-medium whitespace-nowrap">Sessions</th>
+                <th className="text-right py-3 px-4 font-medium whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1">
+                    Users
+                    <InfoTooltip content="집계 기간 내 이 skill을 한 번이라도 호출한 distinct user_id 수 (events 테이블 기준, COUNT(DISTINCT user_id))." />
+                  </span>
+                </th>
+                <th className="text-right py-3 px-4 font-medium whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1">
+                    Median duration
+                    <InfoTooltip content="이 skill의 tool 완료 시간 중앙값 — messages.duration_ms 의 p50. durationMs는 세션 종료(Stop) 시 transcript 기반으로 재빌드되므로 진행 중인 세션은 포함되지 않는다. 샘플 < 3건일 땐 —(대시) 표시." />
+                  </span>
+                </th>
                 <th className="text-right py-3 px-4 font-medium whitespace-nowrap">Last used</th>
               </tr>
             </thead>
@@ -149,6 +162,10 @@ function SkillsContent({
                   </td>
                   <td className="text-right py-3 px-4 tabular-nums">{skill.callCount.toLocaleString()}</td>
                   <td className="text-right py-3 px-4 tabular-nums">{skill.sessionCount.toLocaleString()}</td>
+                  <td className="text-right py-3 px-4 tabular-nums">{skill.userCount.toLocaleString()}</td>
+                  <td className="text-right py-3 px-4 tabular-nums">
+                    {skill.medianDurationMs != null ? formatDurationMs(skill.medianDurationMs) : '—'}
+                  </td>
                   <td
                     className="text-right py-3 px-4 tabular-nums text-muted-foreground"
                     title={formatDateTimeFull(skill.lastUsedAt)}

@@ -95,6 +95,12 @@ export function formatLastUsed(iso: string): string {
   return formatDateTimeFull(iso)
 }
 
+export function formatDurationMs(ms: number): string {
+  if (ms < 1000) return `${Math.round(ms)}ms`
+  if (ms < 60_000) return `${(ms / 1000).toFixed(ms < 10_000 ? 1 : 0)}s`
+  return `${Math.round(ms / 60_000)}min`
+}
+
 export function formatDuration(startedAt: string, endedAt?: string | null): string {
   const start = new Date(startedAt).getTime()
   const end = endedAt ? new Date(endedAt).getTime() : Date.now()

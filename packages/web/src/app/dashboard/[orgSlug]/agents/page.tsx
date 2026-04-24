@@ -8,10 +8,11 @@ import { ChartCard } from '@/components/dashboard/chart-card'
 import { KpiCard } from '@/components/dashboard/kpi-card'
 import { RankedBarChart } from '@/components/dashboard/ranked-bar-chart'
 import { useDashboardAgents } from '@/hooks/use-dashboard-agents'
-import { formatDateTimeFull, formatLastUsed } from '@/lib/format'
+import { formatDateTimeFull, formatLastUsed, formatDurationMs } from '@/lib/format'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 
 function AgentsContent({
   orgSlug,
@@ -136,6 +137,18 @@ function AgentsContent({
                 <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Agent</th>
                 <th className="text-right py-3 px-4 font-medium whitespace-nowrap">Invocations</th>
                 <th className="text-right py-3 px-4 font-medium whitespace-nowrap">Sessions</th>
+                <th className="text-right py-3 px-4 font-medium whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1">
+                    Users
+                    <InfoTooltip content="집계 기간 내 이 agent를 한 번이라도 호출한 distinct user_id 수 (events 테이블 기준, COUNT(DISTINCT user_id))." />
+                  </span>
+                </th>
+                <th className="text-right py-3 px-4 font-medium whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1">
+                    Median duration
+                    <InfoTooltip content="이 agent의 tool 완료 시간 중앙값 — messages.duration_ms 의 p50. durationMs는 세션 종료(Stop) 시 transcript 기반으로 재빌드되므로 진행 중인 세션은 포함되지 않는다. 샘플 < 3건일 땐 —(대시) 표시." />
+                  </span>
+                </th>
                 <th className="text-left py-3 px-4 font-medium">Description</th>
                 <th className="text-right py-3 px-4 font-medium whitespace-nowrap">Last used</th>
               </tr>
@@ -150,6 +163,10 @@ function AgentsContent({
                   </td>
                   <td className="text-right py-3 px-4 tabular-nums">{agent.callCount.toLocaleString()}</td>
                   <td className="text-right py-3 px-4 tabular-nums">{agent.sessionCount.toLocaleString()}</td>
+                  <td className="text-right py-3 px-4 tabular-nums">{agent.userCount.toLocaleString()}</td>
+                  <td className="text-right py-3 px-4 tabular-nums">
+                    {agent.medianDurationMs != null ? formatDurationMs(agent.medianDurationMs) : '—'}
+                  </td>
                   <td className="py-3 px-4 text-muted-foreground max-w-md">
                     {agent.sampleDesc ? (
                       <span className="block truncate" title={agent.sampleDesc}>

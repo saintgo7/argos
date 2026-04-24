@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import type { SkillStat } from '@argos/shared'
 import { db } from '@/lib/server/db'
 import { requireAuth } from '@/lib/server/auth-helper'
 import { handleRouteError } from '@/lib/server/error-helper'
@@ -8,6 +7,7 @@ import {
   assertOrgAccessBySlugOrResponse,
   resolveOrgScopedProjectIds,
 } from '@/lib/server/dashboard-route-helper'
+import { mapSkillRow, type RawSkillRow } from '@/lib/server/dashboard-row-mapping'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -38,36 +38,52 @@ export async function GET(
       return NextResponse.json({ skills: [] })
     }
 
-    const skills = await db.$queryRaw<Array<{
-      skill_name: string
-      call_count: bigint
-      session_count: bigint
-      last_used_at: Date
-    }>>`
+    const skills = await db.$queryRaw<RawSkillRow[]>`
+      WITH skill_events AS (
+        SELECT
+          skill_name,
+          COUNT(*)                   AS call_count,
+          COUNT(DISTINCT session_id) AS session_count,
+          COUNT(DISTINCT user_id)    AS user_count,
+          MAX(timestamp)             AS last_used_at
+        FROM events
+        WHERE is_skill_call = true
+          AND project_id = ANY(${projectIds}::text[])
+          AND skill_name IS NOT NULL
+          AND timestamp >= ${from}
+          AND timestamp <= ${to}
+        GROUP BY skill_name
+      ),
+      skill_durations AS (
+        SELECT
+          m.tool_input->>'skill'                                        AS skill_name,
+          COUNT(m.duration_ms)                                          AS duration_sample_count,
+          percentile_cont(0.5) WITHIN GROUP (ORDER BY m.duration_ms)   AS median_duration_ms
+        FROM messages m
+        JOIN claude_sessions s ON s.id = m.session_id
+        WHERE m.tool_name = 'Skill'
+          AND s.project_id = ANY(${projectIds}::text[])
+          AND m.role = 'TOOL'
+          AND m.duration_ms IS NOT NULL
+          AND m.timestamp >= ${from}
+          AND m.timestamp <= ${to}
+        GROUP BY m.tool_input->>'skill'
+      )
       SELECT
-        skill_name,
-        COUNT(*) AS call_count,
-        COUNT(DISTINCT session_id) AS session_count,
-        MAX(timestamp) AS last_used_at
-      FROM events
-      WHERE project_id = ANY(${projectIds}::text[])
-        AND is_skill_call = true
-        AND skill_name IS NOT NULL
-        AND timestamp >= ${from}
-        AND timestamp <= ${to}
-      GROUP BY skill_name
-      ORDER BY call_count DESC
+        e.skill_name,
+        e.call_count,
+        e.session_count,
+        e.user_count,
+        e.last_used_at,
+        d.median_duration_ms,
+        d.duration_sample_count
+      FROM skill_events e
+      LEFT JOIN skill_durations d USING (skill_name)
+      ORDER BY e.call_count DESC
       LIMIT 50
     `
 
-    const skillStats: SkillStat[] = skills.map((s) => ({
-      skillName: s.skill_name,
-      callCount: Number(s.call_count),
-      sessionCount: Number(s.session_count),
-      lastUsedAt: s.last_used_at.toISOString(),
-    }))
-
-    return NextResponse.json({ skills: skillStats })
+    return NextResponse.json({ skills: skills.map(mapSkillRow) })
   } catch (err) {
     return handleRouteError(err)
   }

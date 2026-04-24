@@ -59,6 +59,14 @@ export interface SkillStat {
   callCount: number
   sessionCount: number
   lastUsedAt: string
+  /** 집계 기간 내 이 skill을 호출한 distinct user_id 수 (events 테이블 기준) */
+  userCount: number
+  /**
+   * 이 skill의 tool_completion 시간 중앙값(ms). messages.duration_ms 의 p50.
+   * 샘플 < 3건이면 통계 신뢰성 휴리스틱으로 null을 반환한다.
+   * "샘플 3" 임계값은 의도적으로 낮은 휴리스틱이며 통계적 유의수준이 아니다.
+   */
+  medianDurationMs: number | null
 }
 
 export interface AgentStat {
@@ -67,6 +75,14 @@ export interface AgentStat {
   sessionCount: number
   lastUsedAt: string
   sampleDesc?: string | null
+  /** 집계 기간 내 이 agent를 호출한 distinct user_id 수 (events 테이블 기준) */
+  userCount: number
+  /**
+   * 이 agent의 tool_completion 시간 중앙값(ms). messages.duration_ms 의 p50.
+   * 샘플 < 3건이면 통계 신뢰성 휴리스틱으로 null을 반환한다.
+   * "샘플 3" 임계값은 의도적으로 낮은 휴리스틱이며 통계적 유의수준이 아니다.
+   */
+  medianDurationMs: number | null
 }
 
 /** org-scoped 세션 리스트/디테일에서 사용하는 project 요약 정보 */

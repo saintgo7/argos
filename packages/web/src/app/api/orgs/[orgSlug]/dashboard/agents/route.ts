@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import type { AgentStat } from '@argos/shared'
 import { db } from '@/lib/server/db'
 import { requireAuth } from '@/lib/server/auth-helper'
 import { handleRouteError } from '@/lib/server/error-helper'
@@ -8,6 +7,7 @@ import {
   assertOrgAccessBySlugOrResponse,
   resolveOrgScopedProjectIds,
 } from '@/lib/server/dashboard-route-helper'
+import { mapAgentRow, type RawAgentRow } from '@/lib/server/dashboard-row-mapping'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -38,22 +38,17 @@ export async function GET(
       return NextResponse.json({ agents: [] })
     }
 
-    const agents = await db.$queryRaw<Array<{
-      agent_type: string
-      call_count: bigint
-      session_count: bigint
-      last_used_at: Date
-      sample_desc: string | null
-    }>>`
+    const agents = await db.$queryRaw<RawAgentRow[]>`
       WITH agent_counts AS (
         SELECT
           agent_type,
-          COUNT(*) AS call_count,
+          COUNT(*)                   AS call_count,
           COUNT(DISTINCT session_id) AS session_count,
-          MAX(timestamp) AS last_used_at
+          COUNT(DISTINCT user_id)    AS user_count,
+          MAX(timestamp)             AS last_used_at
         FROM events
-        WHERE project_id = ANY(${projectIds}::text[])
-          AND is_agent_call = true
+        WHERE is_agent_call = true
+          AND project_id = ANY(${projectIds}::text[])
           AND agent_type IS NOT NULL
           AND timestamp >= ${from}
           AND timestamp <= ${to}
@@ -64,34 +59,45 @@ export async function GET(
           agent_type,
           agent_desc
         FROM events
-        WHERE project_id = ANY(${projectIds}::text[])
-          AND is_agent_call = true
+        WHERE is_agent_call = true
+          AND project_id = ANY(${projectIds}::text[])
           AND agent_type IS NOT NULL
           AND timestamp >= ${from}
           AND timestamp <= ${to}
         ORDER BY agent_type, timestamp DESC
+      ),
+      agent_durations AS (
+        SELECT
+          m.tool_input->>'subagent_type'                                AS agent_type,
+          COUNT(m.duration_ms)                                          AS duration_sample_count,
+          percentile_cont(0.5) WITHIN GROUP (ORDER BY m.duration_ms)   AS median_duration_ms
+        FROM messages m
+        JOIN claude_sessions s ON s.id = m.session_id
+        WHERE m.tool_name = 'Agent'
+          AND s.project_id = ANY(${projectIds}::text[])
+          AND m.role = 'TOOL'
+          AND m.duration_ms IS NOT NULL
+          AND m.timestamp >= ${from}
+          AND m.timestamp <= ${to}
+        GROUP BY m.tool_input->>'subagent_type'
       )
       SELECT
         ac.agent_type,
         ac.call_count,
         ac.session_count,
+        ac.user_count,
         ac.last_used_at,
-        ags.agent_desc AS sample_desc
+        ags.agent_desc AS sample_desc,
+        ad.median_duration_ms,
+        ad.duration_sample_count
       FROM agent_counts ac
       LEFT JOIN agent_samples ags ON ags.agent_type = ac.agent_type
+      LEFT JOIN agent_durations ad ON ad.agent_type = ac.agent_type
       ORDER BY ac.call_count DESC
       LIMIT 50
     `
 
-    const agentStats: AgentStat[] = agents.map((a) => ({
-      agentType: a.agent_type,
-      callCount: Number(a.call_count),
-      sessionCount: Number(a.session_count),
-      lastUsedAt: a.last_used_at.toISOString(),
-      sampleDesc: a.sample_desc,
-    }))
-
-    return NextResponse.json({ agents: agentStats })
+    return NextResponse.json({ agents: agents.map(mapAgentRow) })
   } catch (err) {
     return handleRouteError(err)
   }
