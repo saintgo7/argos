@@ -1,0 +1,127 @@
+name: argos
+
+# ─────────────────────────────────────────────────────────────
+# Production stack (abada-65)
+# Usage: docker compose -f docker-compose.prod.yml up -d
+#
+# Entry: Cloudflare Tunnel → 127.0.0.1:10350 → nginx → web
+# All non-nginx services are internal-only (no host port bind).
+# ─────────────────────────────────────────────────────────────
+
+networks:
+  argos-net:
+    driver: bridge
+
+# NOTE: abada-65 convention = bind-mount runtime data under the project dir
+#       Project path: /data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr/
+#       Host bind dir (created on first deploy): ./data/pgdata
+# No named docker volumes → data stays on the /data LVM (28TB), easy to back up.
+
+services:
+  # ─────────────────────────────────────────
+  # Nginx (Cloudflare Tunnel entrypoint)
+  # Bound to 127.0.0.1 ONLY — never exposed to host network
+  # ─────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: argos-nginx
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:10350:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - web
+    networks:
+      - argos-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─────────────────────────────────────────
+  # Next.js Web (argos app — includes API routes)
+  # Internal only — reached via nginx upstream `web:3000`
+  # ─────────────────────────────────────────
+  web:
+    image: ghcr.io/saintgo7/argos-web:${TAG:-latest}
+    container_name: argos-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_TELEMETRY_DISABLED: 1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - argos-net
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "const h=require('http');h.request('http://localhost:3000/api/health',function(r){process.exit(r.statusCode>=200&&r.statusCode<300?0:1);}).on('error',function(){process.exit(1);}).end();"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─────────────────────────────────────────
+  # PostgreSQL 16
+  # ─────────────────────────────────────────
+  postgres:
+    image: postgres:16
+    container_name: argos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-argos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-argos}
+      POSTGRES_DB: ${POSTGRES_DB:-argos}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ./data/pgdata:/var/lib/postgresql/data
+    networks:
+      - argos-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-argos} -d ${POSTGRES_DB:-argos}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

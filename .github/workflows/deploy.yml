@@ -1,0 +1,225 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'iterations/**'
+      - 'tasks/**'
+      - 'persuasion-data/**'
+      - 'prompts/**'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9.15.4'
+  REGISTRY: ghcr.io
+  WEB_IMAGE: ghcr.io/${{ github.repository_owner }}/argos-web
+
+jobs:
+  # ─────────────────────────────────────────
+  # Lint + typecheck (pnpm workspace)
+  # ─────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @argos/web exec prisma generate
+      - run: pnpm --filter argos-ai build
+      - run: pnpm --filter @argos/web lint
+
+  # ─────────────────────────────────────────
+  # Tests (CLI + web with placeholder env)
+  # ─────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @argos/web exec prisma generate
+      - run: pnpm --filter argos-ai build
+      - run: pnpm --filter argos-ai test
+      - name: Build @argos/web (sanity check)
+        env:
+          AUTH_SECRET: ci-placeholder-secret-min-32-chars-here
+          JWT_SECRET: ci-placeholder-jwt-secret-min-32-chars
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+          DIRECT_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+          NEXT_PUBLIC_SITE_URL: https://argos.abada.co.kr
+        run: pnpm --filter @argos/web build
+
+  # ─────────────────────────────────────────
+  # Build web image → GHCR
+  # ─────────────────────────────────────────
+  build:
+    name: Build & Push Image
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Extract short SHA
+        id: meta
+        run: echo "sha_short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: packages/web/Dockerfile
+          push: true
+          tags: |
+            ${{ env.WEB_IMAGE }}:latest
+            ${{ env.WEB_IMAGE }}:${{ steps.meta.outputs.sha_short }}
+          build-args: |
+            NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL || 'https://argos.abada.co.kr' }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  # ─────────────────────────────────────────
+  # Deploy via SSH → abada-int-65
+  # ─────────────────────────────────────────
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        with:
+          host: ${{ secrets.ABADA_SSH_HOST }}
+          port: ${{ secrets.ABADA_SSH_PORT || 5022 }}
+          username: ${{ secrets.ABADA_SSH_USER }}
+          key: ${{ secrets.ABADA_SSH_KEY }}
+          proxy_host: ${{ secrets.BASTION_SSH_HOST }}
+          proxy_port: ${{ secrets.BASTION_SSH_PORT || 5022 }}
+          proxy_username: ${{ secrets.BASTION_SSH_USER }}
+          proxy_key: ${{ secrets.BASTION_SSH_KEY }}
+          envs: GHCR_TOKEN,GHCR_USER
+          command_timeout: 15m
+          script: |
+            set -e
+            DEPLOY_DIR="/data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr"
+            LOG_DIR="$DEPLOY_DIR/logs"
+            LOG_FILE="$LOG_DIR/deploy-$(date +%Y%m%d-%H%M%S).log"
+            # abada-65 ships the legacy `docker-compose` binary (v5.x).
+            # `docker compose` (v2 plugin) is not available, so the wrapper uses
+            # the hyphenated form consistently.
+            COMPOSE="docker-compose --env-file .env -f docker-compose.prod.yml"
+            SHA_SHORT="${GITHUB_SHA::7}"
+            mkdir -p "$LOG_DIR"
+
+            exec > >(tee -a "$LOG_FILE") 2>&1
+
+            echo "=== argos Deploy ==="
+            echo "Time: $(date)"
+            echo "SHA: $SHA_SHORT"
+
+            cd "$DEPLOY_DIR"
+
+            # 1. Sync compose + nginx from the committed branch in src/.
+            echo "[1/6] Syncing config files..."
+            git -C src fetch -q origin main
+            git -C src checkout -f origin/main
+            cp src/docker-compose.prod.yml ./docker-compose.prod.yml
+            mkdir -p nginx
+            cp src/nginx/nginx.conf ./nginx/nginx.conf
+
+            # 2. Backup current image for rollback
+            echo "[2/6] Backing up current image..."
+            docker tag ghcr.io/saintgo7/argos-web:latest ghcr.io/saintgo7/argos-web:backup 2>/dev/null || true
+
+            # 3. Pull the new image. The short SHA tag is written to .env so any
+            #    `$COMPOSE` invocation on this host resolves ${TAG} to the exact
+            #    image that CI just pushed.
+            echo "[3/6] Pulling GHCR image..."
+            echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+            if grep -q '^TAG=' .env; then
+              sed -i "s|^TAG=.*|TAG=$SHA_SHORT|" .env
+            else
+              echo "TAG=$SHA_SHORT" >> .env
+            fi
+            $COMPOSE pull web
+
+            # 4. Restart containers
+            echo "[4/6] Restarting containers..."
+            $COMPOSE up -d --remove-orphans
+
+            # 5. Run DB migrations (schema path is explicit because the container
+            #    WORKDIR is /app while the schema lives at packages/web/prisma/).
+            echo "[5/6] Running Prisma migrations..."
+            $COMPOSE exec -T web npx prisma migrate deploy --schema packages/web/prisma/schema.prisma
+
+            # 6. Health check with auto-rollback (via nginx port 10350)
+            echo "[6/6] Health check..."
+            HEALTHY=false
+            for i in $(seq 1 12); do
+              if curl -fsS http://127.0.0.1:10350/health >/dev/null 2>&1; then
+                echo "Health check passed (attempt $i/12)"
+                HEALTHY=true
+                break
+              fi
+              echo "Waiting... ($i/12)"
+              sleep 10
+            done
+
+            if [ "$HEALTHY" = "false" ]; then
+              echo "HEALTH CHECK FAILED - Rolling back..."
+              docker tag ghcr.io/saintgo7/argos-web:backup ghcr.io/saintgo7/argos-web:latest 2>/dev/null || true
+              sed -i 's|^TAG=.*|TAG=latest|' .env
+              $COMPOSE up -d --remove-orphans
+              echo "Rollback complete. Check logs: $LOG_FILE"
+              exit 1
+            fi
+
+            echo ""
+            echo "=== Deploy complete ==="
+            $COMPOSE ps
+            echo "Log: $LOG_FILE"
+
+            # Keep last 30 deploy logs
+            ls -1t "$LOG_DIR"/deploy-*.log 2>/dev/null | tail -n +31 | xargs rm -f 2>/dev/null || true

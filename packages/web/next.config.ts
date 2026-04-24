@@ -7,6 +7,7 @@ import type { NextConfig } from 'next'
 const workspaceRoot = path.resolve(process.cwd(), '../..')
 
 const config: NextConfig = {
+  output: 'standalone',
   outputFileTracingRoot: workspaceRoot,
   transpilePackages: ['@argos/shared'],
   images: {
