@@ -44,7 +44,7 @@
 
 ### 1. Prerequisites on abada-65
 
-- Docker + Docker Compose v2 installed
+- Docker 28+ with `docker-buildx` plugin and the legacy `docker-compose` binary (v5.x) installed
 - `cloudflared` tunnel `05-dev-ext` running (shared with other abada services)
 - User `blackpc` with `docker` group access
 - `/data` LVM mounted
@@ -100,7 +100,7 @@ chmod 600 .env
 ### 6. First boot (postgres + web)
 
 ```bash
-COMPOSE="docker compose --env-file .env -f docker-compose.prod.yml"
+COMPOSE="docker-compose --env-file .env -f docker-compose.prod.yml"
 
 # Bring up postgres first (other services depend on it being healthy)
 $COMPOSE up -d postgres
@@ -168,7 +168,7 @@ Every push to `main` triggers `.github/workflows/deploy.yml`:
    - `git -C src fetch/checkout origin/main`
    - Copy `docker-compose.prod.yml` + `nginx/nginx.conf` from src
    - Rewrite `TAG=<sha>` in `.env` (atomic tag pin)
-   - `docker compose pull web` + `up -d`
+   - `docker-compose pull web` + `up -d`
    - `prisma migrate deploy`
 4. Health check (12 × 10s) against `http://127.0.0.1:10350/health`
 5. On failure: retag `:backup` → `:latest`, reset `TAG=latest`, recompose
@@ -200,9 +200,9 @@ Then commit `.argos/project.json` + `.claude/settings.json` so teammates auto-jo
 
 ```bash
 cd /data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr
-docker compose -f docker-compose.prod.yml logs -f web
-docker compose -f docker-compose.prod.yml logs -f postgres
-docker compose -f docker-compose.prod.yml logs -f nginx
+docker-compose -f docker-compose.prod.yml logs -f web
+docker-compose -f docker-compose.prod.yml logs -f postgres
+docker-compose -f docker-compose.prod.yml logs -f nginx
 ls -lh logs/           # deploy.log archive (last 30 runs)
 ```
 
@@ -210,7 +210,7 @@ ls -lh logs/           # deploy.log archive (last 30 runs)
 
 ```bash
 cd /data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr
-COMPOSE="docker compose --env-file .env -f docker-compose.prod.yml"
+COMPOSE="docker-compose --env-file .env -f docker-compose.prod.yml"
 $COMPOSE exec -T web npx prisma migrate deploy --schema packages/web/prisma/schema.prisma
 ```
 
@@ -220,7 +220,7 @@ $COMPOSE exec -T web npx prisma migrate deploy --schema packages/web/prisma/sche
 cd /data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr
 docker tag ghcr.io/saintgo7/argos-web:backup ghcr.io/saintgo7/argos-web:latest
 sed -i 's|^TAG=.*|TAG=latest|' .env
-docker compose --env-file .env -f docker-compose.prod.yml up -d --remove-orphans
+docker-compose --env-file .env -f docker-compose.prod.yml up -d --remove-orphans
 ```
 
 Or pin to a specific SHA:
@@ -228,7 +228,7 @@ Or pin to a specific SHA:
 ```bash
 docker pull ghcr.io/saintgo7/argos-web:<sha>
 sed -i "s|^TAG=.*|TAG=<sha>|" .env
-docker compose --env-file .env -f docker-compose.prod.yml up -d
+docker-compose --env-file .env -f docker-compose.prod.yml up -d
 ```
 
 ### Postgres backup
@@ -236,7 +236,7 @@ docker compose --env-file .env -f docker-compose.prod.yml up -d
 ```bash
 cd /data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr
 mkdir -p backups
-docker compose -f docker-compose.prod.yml exec -T postgres \
+docker-compose -f docker-compose.prod.yml exec -T postgres \
   pg_dump -U argos argos | gzip > "backups/argos-$(date +%Y%m%d-%H%M%S).sql.gz"
 ```
 
@@ -244,7 +244,7 @@ Restore:
 
 ```bash
 gunzip -c backups/argos-YYYYMMDD-HHMMSS.sql.gz | \
-  docker compose -f docker-compose.prod.yml exec -T postgres psql -U argos -d argos
+  docker-compose -f docker-compose.prod.yml exec -T postgres psql -U argos -d argos
 ```
 
 ### Data volume
@@ -261,8 +261,8 @@ sudo du -sh /data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr/data/pgdata
 
 | Symptom | Check |
 |---|---|
-| 502 at argos.abada.co.kr | `docker compose -f docker-compose.prod.yml ps` — all healthy? Tunnel running? |
-| nginx up but /api/health 502 | web container healthy? `docker compose logs web` |
+| 502 at argos.abada.co.kr | `docker-compose -f docker-compose.prod.yml ps` — all healthy? Tunnel running? |
+| nginx up but /api/health 502 | web container healthy? `docker-compose logs web` |
 | Migration P3009 (failed migration) | `$COMPOSE exec -T web npx prisma migrate resolve --rolled-back <name> --schema packages/web/prisma/schema.prisma` then retry |
 | `AUTH_SECRET` too short error | regenerate with `openssl rand -hex 32` (64 hex chars = 32 bytes) |
 | CLI redirects to `argos-ai.xyz` | check `.argos/project.json` `apiUrl`; run `argos --api-url https://argos.abada.co.kr` once |

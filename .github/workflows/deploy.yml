@@ -146,7 +146,10 @@ jobs:
             DEPLOY_DIR="/data/abada-co-kr/argos-abada-co-kr/argos.abada.co.kr"
             LOG_DIR="$DEPLOY_DIR/logs"
             LOG_FILE="$LOG_DIR/deploy-$(date +%Y%m%d-%H%M%S).log"
-            COMPOSE="docker compose --env-file .env -f docker-compose.prod.yml"
+            # abada-65 ships the legacy `docker-compose` binary (v5.x).
+            # `docker compose` (v2 plugin) is not available, so the wrapper uses
+            # the hyphenated form consistently.
+            COMPOSE="docker-compose --env-file .env -f docker-compose.prod.yml"
             SHA_SHORT="${GITHUB_SHA::7}"
             mkdir -p "$LOG_DIR"
 
