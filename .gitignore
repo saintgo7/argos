@@ -5,6 +5,9 @@ dist/
 *.log
 .env
 .env.local
+.env.production
+.env.*.local
+!.env.production.example
 .turbo
 .vercel
 backups/

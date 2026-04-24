@@ -1,0 +1,52 @@
+# Production override
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# - Uses pre-built images from GHCR (built by .github/workflows/deploy.yml).
+# - Loads secrets from .env.production (git-ignored, server-local).
+# - Postgres port is not exposed; only `web` binds to host 10280 for Cloudflare Tunnel.
+
+services:
+  web:
+    image: ghcr.io/saintgo7/argos-web:latest
+    build:
+      context: .
+      dockerfile: packages/web/Dockerfile
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://argos.abada.co.kr}
+    env_file:
+      - .env.production
+    ports:
+      - "10280:3000"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres:
+    env_file:
+      - .env.production
+    ports: []
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
