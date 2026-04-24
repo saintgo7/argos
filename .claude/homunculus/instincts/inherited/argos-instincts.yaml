@@ -1,0 +1,339 @@
+# Instincts generated from https://github.com/saintgo7/argos
+# Generated: 2026-04-24T14:41:02.232Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: argos-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/saintgo7/argos
+---
+
+# Argos Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: feat, chore, docs
+
+## Evidence
+
+- 4 commits analyzed
+- Detected conventional commit pattern
+- Examples: chore(next): enable standalone output for docker self-host, feat(docker): add Dockerfile + compose for argos-web self-host
+
+---
+id: argos-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/saintgo7/argos
+---
+
+# Argos Commit Length
+
+## Action
+
+Write moderate-length commit messages (~56 characters)
+
+## Evidence
+
+- Average commit message length: 56 chars
+- Based on 4 commits
+
+---
+id: argos-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/saintgo7/argos
+---
+
+# Argos Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: argos-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/saintgo7/argos
+---
+
+# Argos Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: argos-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/saintgo7/argos
+---
+
+# Argos Export Style
+
+## Action
+
+Prefer default exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: default
+
+---
+id: argos-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/saintgo7/argos
+---
+
+# Argos Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: argos-instinct-file-naming
+trigger: "When creating a new file in the codebase"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: saintgo7/argos
+---
+
+# Argos Instinct File Naming
+
+## Action
+
+Name the file using camelCase
+
+## Evidence
+
+- Pattern in namingConventions.files
+
+---
+id: argos-instinct-function-naming
+trigger: "When defining a new function"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: saintgo7/argos
+---
+
+# Argos Instinct Function Naming
+
+## Action
+
+Name the function using camelCase
+
+## Evidence
+
+- Pattern in namingConventions.functions
+
+---
+id: argos-instinct-class-naming
+trigger: "When defining a new class"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: saintgo7/argos
+---
+
+# Argos Instinct Class Naming
+
+## Action
+
+Name the class using PascalCase
+
+## Evidence
+
+- Pattern in namingConventions.classes
+
+---
+id: argos-instinct-constant-naming
+trigger: "When defining a new constant"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: saintgo7/argos
+---
+
+# Argos Instinct Constant Naming
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE
+
+## Evidence
+
+- Pattern in namingConventions.constants
+
+---
+id: argos-instinct-import-style
+trigger: "When importing modules within the codebase"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: saintgo7/argos
+---
+
+# Argos Instinct Import Style
+
+## Action
+
+Use relative import paths
+
+## Evidence
+
+- Pattern in importStyle
+
+---
+id: argos-instinct-export-style
+trigger: "When exporting modules or components"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: saintgo7/argos
+---
+
+# Argos Instinct Export Style
+
+## Action
+
+Use default exports
+
+## Evidence
+
+- Pattern in exportStyle
+
+---
+id: argos-instinct-commit-format
+trigger: "When making a git commit"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: saintgo7/argos
+---
+
+# Argos Instinct Commit Format
+
+## Action
+
+Format the commit message using the conventional commit style with prefixes: feat, chore, or docs
+
+## Evidence
+
+- Seen in commit: chore(next): enable standalone output for docker self-host
+- Seen in commit: feat(docker): add Dockerfile + compose for argos-web self-host
+- Pattern in commits.prefixes
+
+---
+id: argos-instinct-commit-length
+trigger: "When writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: saintgo7/argos
+---
+
+# Argos Instinct Commit Length
+
+## Action
+
+Keep the commit message around 56 characters on average
+
+## Evidence
+
+- Pattern in commits.averageLength
+
+---
+id: argos-instinct-test-location
+trigger: "When adding or updating tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: saintgo7/argos
+---
+
+# Argos Instinct Test Location
+
+## Action
+
+Place test files in a separate directory from source code
+
+## Evidence
+
+- Pattern in architecture.folderStructure.testLocation
+
+---
+id: argos-instinct-monorepo-structure
+trigger: "When adding a new package or module"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: saintgo7/argos
+---
+
+# Argos Instinct Monorepo Structure
+
+## Action
+
+Place it under the 'packages' directory following the monorepo structure
+
+## Evidence
+
+- Pattern in architecture.folderStructure.commonFolders
+
+---
+id: argos-instinct-config-location
+trigger: "When adding configuration for workflows or deployment"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: saintgo7/argos
+---
+
+# Argos Instinct Config Location
+
+## Action
+
+Place workflow configs under .github/workflows and deployment configs at the repo root or in relevant package folders
+
+## Evidence
+
+- Pattern in architecture.configFiles
+- Pattern in architecture.folderStructure.commonFolders
+
