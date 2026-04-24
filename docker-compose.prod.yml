@@ -35,7 +35,10 @@ services:
     networks:
       - argos-net
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost/health || exit 1"]
+      # Alpine wget resolves `localhost` to ::1 first, but nginx only listens on
+      # IPv4 inside this container. Force IPv4 so the healthcheck reports the
+      # actual reachable state instead of an unrelated IPv6 connection refused.
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
