@@ -74,7 +74,11 @@ services:
         - CMD
         - node
         - -e
-        - "const h=require('http');h.request('http://localhost:3000/api/health',function(r){process.exit(r.statusCode>=200&&r.statusCode<300?0:1);}).on('error',function(){process.exit(1);}).end();"
+        # node:20 resolves `localhost` to ::1 first (DNS verbatim ordering),
+        # but the Next.js server binds IPv4-only (HOSTNAME=0.0.0.0). Use the
+        # IPv4 literal so the healthcheck hits the actual listener — same root
+        # cause as the nginx healthcheck fix above.
+        - "const h=require('http');h.request('http://127.0.0.1:3000/api/health',function(r){process.exit(r.statusCode>=200&&r.statusCode<300?0:1);}).on('error',function(){process.exit(1);}).end();"
       interval: 30s
       timeout: 10s
       retries: 3
