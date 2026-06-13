@@ -12,7 +12,8 @@ import type { IngestEventPayload } from '@argos/shared'
 export function sendEventBackground(url: string, token: string, payload: IngestEventPayload): void {
   const tmpFile = join(tmpdir(), `argos-${Date.now()}-${Math.random().toString(36).slice(2)}.json`)
   try {
-    writeFileSync(tmpFile, JSON.stringify({ url, token, payload }), 'utf8')
+    // 토큰이 담기므로 소유자만 읽도록 0600 으로 기록 (공용 머신에서 토큰 유출 방지)
+    writeFileSync(tmpFile, JSON.stringify({ url, token, payload }), { encoding: 'utf8', mode: 0o600 })
     const script = [
       `const fs=require('fs');`,
       `const d=JSON.parse(fs.readFileSync(${JSON.stringify(tmpFile)},'utf8'));`,
