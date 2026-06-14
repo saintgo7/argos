@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server'
 import { UpdateProjectSchema } from '@argos/shared'
 import { requireAuth } from '@/lib/server/auth-helper'
 import { handleRouteError } from '@/lib/server/error-helper'
-import { assertProjectAccessOrResponse } from '@/lib/server/dashboard-route-helper'
+import {
+  assertProjectAccessOrResponse,
+  assertOrgAccessOrResponse,
+} from '@/lib/server/dashboard-route-helper'
+import { canManageOrg, forbiddenByRole } from '@/lib/server/rbac'
 import { db } from '@/lib/server/db'
 import {
   getProjectForUser,
@@ -50,6 +54,16 @@ export async function PATCH(
     const { userId } = auth
 
     const { projectId } = await params
+
+    // 프로젝트 이름 변경은 org 설정 변경이므로 Manager+ 권한 (프로젝트 생성과 동일 기준).
+    const access = await assertProjectAccessOrResponse(projectId, userId)
+    if (access instanceof NextResponse) return access
+    const orgAccess = await assertOrgAccessOrResponse(access.orgId, userId)
+    if (orgAccess instanceof NextResponse) return orgAccess
+    if (!canManageOrg(orgAccess.role)) {
+      return forbiddenByRole(orgAccess.role, 'MANAGER 이상')
+    }
+
     const body = await req.json()
     const input = UpdateProjectSchema.parse(body)
 
@@ -99,6 +113,13 @@ export async function DELETE(
 
     const access = await assertProjectAccessOrResponse(projectId, userId)
     if (access instanceof NextResponse) return access
+
+    // 프로젝트 삭제는 세션·이벤트·사용량을 모두 cascade 제거하므로 Manager+ 권한.
+    const orgAccess = await assertOrgAccessOrResponse(access.orgId, userId)
+    if (orgAccess instanceof NextResponse) return orgAccess
+    if (!canManageOrg(orgAccess.role)) {
+      return forbiddenByRole(orgAccess.role, 'MANAGER 이상')
+    }
 
     await db.project.delete({ where: { id: projectId } })
 
