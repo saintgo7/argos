@@ -56,10 +56,11 @@ export function writeConfig(config: Config): void {
   const configDir = join(homedir(), '.argos')
 
   if (!existsSync(configDir)) {
-    mkdirSync(configDir, { recursive: true })
+    mkdirSync(configDir, { recursive: true, mode: 0o700 })
   }
 
-  writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8')
+  // 1년 수명 CLI JWT가 담기므로 소유자만 읽도록 0600 으로 기록 (공용 머신에서 토큰 유출 방지)
+  writeFileSync(configPath, JSON.stringify(config, null, 2), { encoding: 'utf8', mode: 0o600 })
 }
 
 export function deleteConfig(): void {
