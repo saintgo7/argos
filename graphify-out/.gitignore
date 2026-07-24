@@ -1,6 +1,0 @@
-# graphify 산출물 중 대용량/캐시 항목 제외, 리포트와 그래프 JSON 만 추적
-graph.html
-cache/
-2026-*/
-.graphify_semantic_marker
-manifest.json

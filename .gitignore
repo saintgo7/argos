@@ -16,3 +16,4 @@ backups/
 persuasion-data/runs/
 __pycache__/
 *.pyc
+graphify-out/
